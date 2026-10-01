@@ -277,7 +277,7 @@ button.lk{cursor:pointer;font-family:inherit}
 .nrow{appearance:none;width:100%;background:none;border:0;border-top:1px solid var(--line);text-align:left;cursor:pointer;color:inherit;font:inherit}
 .nrow:first-child{border-top:0}
 .map{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
-.map svg{display:block;width:100%;height:auto;background:var(--surface2)}
+.map>svg{display:block;width:100%;height:auto;background:var(--surface2)}
 .map .grid{stroke:var(--line);stroke-width:1;opacity:.6}
 .map .route-l{fill:none;stroke-width:3;stroke-dasharray:6 6;stroke-linecap:round;opacity:.85}
 .map .pin{cursor:pointer;outline:none}
@@ -294,6 +294,18 @@ button.lk{cursor:pointer;font-family:inherit}
 .how{margin-top:10px;font-size:14px}
 .how summary{cursor:pointer;color:var(--accent)}
 .how ol{list-style:decimal;padding-left:20px;margin-top:6px;display:flex;flex-direction:column;gap:4px}
+
+/* 지도(Leaflet) */
+.lmap{position:relative;z-index:0;isolation:isolate;height:360px;width:100%;background:var(--surface2);font-family:var(--f-body)}
+.lpwrap{background:none;border:0}
+.lpin{width:28px;height:28px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font:14px/1 var(--f-body);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);text-shadow:0 0 2px rgba(0,0,0,.5)}
+.lpin.none{background:#fff;color:#57697D;border:2px dashed #57697D;text-shadow:none}
+.lpin.done{opacity:.55}
+.lpin.sel{transform:scale(1.25);box-shadow:0 0 0 3px #14263D}
+.lpl{position:absolute;left:50%;top:31px;transform:translateX(-50%);white-space:nowrap;font:12px/1.2 var(--f-body);color:#14263D;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 4px #fff;pointer-events:none}
+.lmap.nolabel .lpl{display:none}
+.leaflet-control-attribution{font-size:10px}
+.leaflet-attribution-flag{display:none!important}
 </style></head><body>
 <div id="app"></div><div id="sheet-root"></div><div id="toast" role="status" aria-live="polite"></div>
 <script type="application/json" id="trip-data">{"v":1,"trip":{"title":"부산 여행","dest":"부산","start":"2026-11-28","end":"2026-11-29","budget":0,"treasurer":"m1","notice":"","sample":false,"mapNaver":"","mapGoogle":""},"members":[{"id":"m1","name":"멤버1","role":"","phone":"","note":""},{"id":"m2","name":"멤버2","role":"","phone":"","note":""},{"id":"m3","name":"멤버3","role":"","phone":"","note":""},{"id":"m4","name":"멤버4","role":"","phone":"","note":""},{"id":"m5","name":"멤버5","role":"","phone":"","note":""},{"id":"m6","name":"멤버6","role":"","phone":"","note":""}],"dayNotes":{},"items":[{"id":"i1","date":"2026-11-28","time":"","title":"수원역 → 부산역","type":"이동","place":"","ref":"b:b1","note":"","ord":10}],"places":[{"id":"p1","name":"이재모피자","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.0983,"lng":129.0328},{"id":"p2","name":"부평깡통시장","kind":"맛집","area":"부산 중구 부평동","day":"","naver":"","note":"","done":false,"lat":35.1017,"lng":129.0263},{"id":"p3","name":"남포동 족발골목","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.1008,"lng":129.0258},{"id":"p4","name":"감천문화마을","kind":"관광","area":"부산 사하구 감천동","day":"","naver":"","note":"","done":false,"lat":35.0975,"lng":129.0106},{"id":"p5","name":"해운대","kind":"관광","area":"부산 해운대구","day":"","naver":"","note":"","done":false,"lat":35.1587,"lng":129.1604},{"id":"p6","name":"태종대","kind":"관광","area":"부산 영도구","day":"","naver":"","note":"","done":false,"lat":35.0514,"lng":129.087}],"bookings":[{"id":"b1","type":"기차","title":"수원역 → 부산역","date":"2026-11-28","time":"","from":"수원역","to":"부산역","place":"","people":6,"seat":"","code":"","price":0,"status":"예약필요","link":"","note":"6명이 같이 앉을 수 있게 예매하기"}],"lodging":[],"expenses":[],"contribs":[],"pack":[],"info":[]}</script>
@@ -373,7 +385,7 @@ function fromEmb(){
 let S=fromEmb();
 let DB=null,mode='snap';
 const cap={downloads:true};
-const ui={tab:LS.get('tab','home'),day:null,kind:'전체',bf:'전체',ef:'전체',seg:'book',pseg:'list',pin:null,edit:false,canEdit:false,loading:false,sheet:null,hide:false,srch:''};
+const ui={tab:LS.get('tab','home'),day:null,kind:'전체',bf:'전체',ef:'전체',seg:'book',pseg:'list',pin:null,edit:false,canEdit:false,loading:false,sheet:null,hide:false,srch:'',me:null};
 if(!['home','plan','map','book','money','more'].includes(ui.tab))ui.tab='home';
 let busy=false;
 
@@ -517,13 +529,14 @@ function vHome(){
 }
 
 /* ---------- 화면: 일정 ---------- */
-function stop(x){
+function stop(x,i,arr){
   const r=refOf(x);
+  const pl0=placeOf(x.place),nx=arr?arr.slice(i+1).map(y=>y.skip?null:placeOf(y.place)).find(p=>p&&isNum(p.lat)):null;
   let badge='';
   if(x.skip)badge='<span class="pill off">건너뜀</span>';
   else if(r&&r.k==='b')badge='<span class="pill '+pc(r.o.status)+'">'+esc(r.o.status)+'</span>';
   else if(r&&r.k==='l')badge='<span class="pill ok">숙소 예약</span>';
-  return '<li class="stop'+(x.skip?' skip':'')+'"><div class="st">'+esc(x.time||'종일')+'</div><div class="rl"></div><div class="sb"><div class="s1"><span class="tag">'+esc(x.type)+'</span>'+badge+moveBtn(x.id)+'</div><h3>'+esc(x.title)+'</h3>'+(x.place?'<div class="pl">'+ic('pin',14)+'<span>'+esc(x.place)+'</span></div><div class="acts">'+mapLinks(x.place)+'</div>':'')+(x.note?'<p class="nt">'+nl(x.note)+'</p>':'')+'</div></li>';
+  return '<li class="stop'+(x.skip?' skip':'')+'"><div class="st">'+esc(x.time||'종일')+'</div><div class="rl"></div><div class="sb"><div class="s1"><span class="tag">'+esc(x.type)+'</span>'+badge+moveBtn(x.id)+'</div><h3>'+esc(x.title)+'</h3>'+(x.place?'<div class="pl">'+ic('pin',14)+'<span>'+esc(x.place)+'</span></div><div class="acts">'+dirLinks(pl0,false)+(nx&&isNum(pl0.lat)?lk(legUrl(pl0,nx),'다음 장소까지'):'')+mapLinks(x.place)+'</div>':'')+(x.note?'<p class="nt">'+nl(x.note)+'</p>':'')+'</div></li>';
 }
 function vPlan(){
   const days=tripDays();
@@ -550,7 +563,7 @@ function vPlan(){
 /* ---------- 화면: 장소 (목록 · 지도) ---------- */
 function placeRow(p,done){
   const direct=safe(p.naver),on=!!p.done;
-  return '<div class="row place'+(on?' done':'')+'"><button type="button" class="ck" role="checkbox" aria-checked="'+on+'" aria-label="'+esc(p.name)+' 다녀옴" data-act="chk" data-id="'+p.id+'">'+ic('check',16)+'</button><div class="pb"><div class="pt"><strong>'+esc(p.name)+'</strong><span class="tag">'+esc(p.kind)+'</span>'+(p.day?'<span class="tag">'+dayNo(p.day)+'일차</span>':'<span class="tag off">미정</span>')+penBtn('place',p.id)+'</div>'+(p.area?'<div class="sub">'+esc(p.area)+'</div>':'')+(p.note?'<p class="nt">'+nl(p.note)+'</p>':'')+'<div class="acts">'+lk(direct||nmap(p.name+(p.area?' '+p.area:'')),'네이버 플레이스',direct?'lk pri':'lk')+lk(gmap(p.name+(p.area?' '+p.area:'')),'구글지도')+(ui.edit?'<button type="button" class="lk" data-act="addplace" data-id="'+p.id+'">일정에 넣기</button>':'')+'</div></div></div>';
+  return '<div class="row place'+(on?' done':'')+'"><button type="button" class="ck" role="checkbox" aria-checked="'+on+'" aria-label="'+esc(p.name)+' 다녀옴" data-act="chk" data-id="'+p.id+'">'+ic('check',16)+'</button><div class="pb"><div class="pt"><strong>'+esc(p.name)+'</strong><span class="tag">'+esc(p.kind)+'</span>'+(p.day?'<span class="tag">'+dayNo(p.day)+'일차</span>':'<span class="tag off">미정</span>')+penBtn('place',p.id)+'</div>'+(p.area?'<div class="sub">'+esc(p.area)+'</div>':'')+(p.note?'<p class="nt">'+nl(p.note)+'</p>':'')+'<div class="acts">'+dirLinks(p,false)+lk(direct||nmap(p.name+(p.area?' '+p.area:'')),'네이버 플레이스',direct?'lk pri':'lk')+lk(gmap(p.name+(p.area?' '+p.area:'')),'구글지도')+(ui.edit?'<button type="button" class="lk" data-act="addplace" data-id="'+p.id+'">일정에 넣기</button>':'')+'</div></div></div>';
 }
 function vPlaces(){
   let h='<div class="seg" role="group" aria-label="보기"><button type="button" data-act="pseg" data-v="list" aria-pressed="'+(ui.pseg==='list')+'">목록</button><button type="button" data-act="pseg" data-v="map" aria-pressed="'+(ui.pseg==='map')+'">지도</button></div>';
@@ -607,28 +620,180 @@ function mapSvg(pts,zr){
   const km=sw*111.32;
   return '<div class="map"><svg viewBox="0 0 '+Wd+' '+Ht+'" role="img" aria-label="가고 싶은 곳 약도">'+g+'</svg><div class="map-cap"><span>'+(zr?'선택한 곳 반경 '+zr+'km · ':'')+'가로 약 '+(km<10?km.toFixed(1):Math.round(km))+'km</span><span>숫자 = 일정에 넣은 날 · ? = 아직 미정</span></div></div>';
 }
+
+/* ---- 진짜 지도 (Leaflet + OpenStreetMap) ---- */
+let leafletState=0,LMAP=null,LEL=null,LLAYER=null,LFIT=true,lastPin=null,lastZoom=false;
+function loadLeaflet(){
+  if(leafletState!==0)return;
+  leafletState=1;
+  const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(l);
+  const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  sc.onload=()=>{leafletState=2;scheduleRender()};
+  sc.onerror=()=>{leafletState=-1;scheduleRender()};
+  document.head.appendChild(sc);
+}
+function syncMap(){
+  const slot=$('#lmap-slot');
+  if(!slot||leafletState!==2||!window.L)return;
+  if(!LEL){LEL=document.createElement('div');LEL.className='lmap'}
+  if(LEL.parentNode!==slot)slot.appendChild(LEL);
+  if(!LMAP){
+    LMAP=L.map(LEL,{zoomControl:true,attributionControl:true}).setView([36.5,127.8],7);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(LMAP);
+    LLAYER=L.layerGroup().addTo(LMAP);
+    LMAP.on('zoomend',()=>LEL.classList.toggle('nolabel',LMAP.getZoom()<13));
+    LFIT=true;
+  }
+  LMAP.invalidateSize();
+  drawMarkers();
+}
+function drawMarkers(){
+  const pts=S.places.filter(p=>isNum(p.lat)&&isNum(p.lng));
+  LLAYER.clearLayers();
+  const days=tripDays(),bounds=[],sel=pts.find(p=>p.id===ui.pin);
+  const route=itemsOf(ui.day||'').filter(x=>!x.skip).map(x=>pts.find(p=>p.name===x.place)).filter(Boolean);
+  if(route.length>=2){
+    const di=Math.max(0,days.indexOf(ui.day));
+    const col=(getComputedStyle(document.documentElement).getPropertyValue('--l'+(di%6+1))||'#2F6FE4').trim();
+    L.polyline(route.map(p=>[p.lat,p.lng]),{color:col,weight:3,dashArray:'6 6',opacity:.85}).addTo(LLAYER);
+  }
+  pts.forEach(p=>{
+    const i=p.day?days.indexOf(p.day):-1;
+    const html='<div class="lpin'+(i<0?' none':'')+(p.done?' done':'')+(p.id===ui.pin?' sel':'')+'" style="--c:var(--l'+((i<0?0:i)%6+1)+')">'+(i>=0?i+1:'?')+'</div><span class="lpl">'+esc(p.name)+'</span>';
+    const m=L.marker([p.lat,p.lng],{icon:L.divIcon({html,className:'lpwrap',iconSize:[28,28],iconAnchor:[14,14]}),keyboard:true,title:p.name}).addTo(LLAYER);
+    m.on('click',()=>{ui.pin=p.id;render()});
+    bounds.push([p.lat,p.lng]);
+  });
+  if(ui.me){L.circleMarker([ui.me.lat,ui.me.lng],{radius:8,color:'#fff',weight:3,fillColor:'#2F6FE4',fillOpacity:1}).addTo(LLAYER);bounds.push([ui.me.lat,ui.me.lng])}
+  const zoomed=!!(ui.zoom&&sel);
+  if(LFIT||lastZoom!==zoomed){
+    const fb=zoomed?pts.filter(p=>hav(sel,p)<=3).map(p=>[p.lat,p.lng]):bounds;
+    if(fb.length===1)LMAP.setView(fb[0],15);else if(fb.length>1)LMAP.fitBounds(fb,{padding:[36,36],maxZoom:16});
+    LFIT=false;lastZoom=zoomed;
+  }else if(sel&&lastPin!==ui.pin){LMAP.setView([sel.lat,sel.lng],Math.max(LMAP.getZoom(),14))}
+  lastPin=ui.pin;
+  LEL.classList.toggle('nolabel',LMAP.getZoom()<13);
+}
+function locate(){
+  if(!navigator.geolocation){toast('이 기기에서는 위치를 못 가져와요');return}
+  toast('내 위치를 찾는 중이에요…');
+  navigator.geolocation.getCurrentPosition(p=>{ui.me={lat:p.coords.latitude,lng:p.coords.longitude};ui.pin=null;LFIT=true;render();toast('내 위치를 찾았어요')},
+    e=>toast(e&&e.code===1?'위치 권한이 꺼져 있어요. 브라우저 설정에서 이 사이트의 위치를 허용해 주세요':'위치를 찾지 못했어요'),
+    {enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+}
+async function geocode(qs){
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ko&q='+q(qs));
+    if(!r.ok)return null;
+    const j=await r.json();
+    if(j&&j[0]){const a=Number(j[0].lat),b=Number(j[0].lon);if(isFinite(a)&&isFinite(b))return [a,b]}
+  }catch(e){}
+  return null;
+}
+async function geoAll(){
+  if(busy)return;
+  const todo=S.places.filter(p=>!(isNum(p.lat)&&isNum(p.lng)));
+  if(!todo.length)return;
+  busy=true;let ok=0;
+  for(let i=0;i<todo.length;i++){
+    const p=todo[i];
+    toast('좌표를 찾는 중이에요… '+(i+1)+'/'+todo.length);
+    let c=await geocode(((p.area||'')+' '+p.name).trim());
+    if(!c){await new Promise(r=>setTimeout(r,1100));c=await geocode(p.name)}
+    if(c&&await guard(()=>W.upd('places',p.id,{lat:c[0],lng:c[1]})))ok++;
+    await new Promise(r=>setTimeout(r,1100));
+  }
+  busy=false;LFIT=true;
+  toast(ok+'곳의 좌표를 찾았어요'+(ok<todo.length?'. 못 찾은 곳은 수정에서 직접 넣어 주세요':''));
+}
+async function geoFill(){
+  const nm=($('#f-name')||{}).value||'',ar=($('#f-area')||{}).value||'';
+  if(!nm.trim()){toast('이름을 먼저 적어 주세요');return}
+  toast('좌표를 찾는 중이에요…');
+  const c=await geocode((ar+' '+nm).trim())||await geocode(nm.trim());
+  if(!c){toast('좌표를 못 찾았어요. 위치·주소를 더 자세히 적어 보세요');return}
+  const el=$('#f-ll');if(el)el.value=c[0].toFixed(5)+', '+c[1].toFixed(5);
+  toast('좌표를 넣었어요. 위치가 맞는지 지도에서 확인해 주세요');
+}
+/* ---- 길찾기: 국내는 네이버지도, 해외는 구글지도 ---- */
+const merc=(lat,lng)=>{const R=6378137;return [(lng*Math.PI/180*R).toFixed(2),(Math.log(Math.tan(Math.PI/4+lat*Math.PI/360))*R).toFixed(2)]};
+const inKorea=p=>isNum(p.lat)&&isNum(p.lng)&&p.lat>=33&&p.lat<=38.7&&p.lng>=124.5&&p.lng<=131.9;
+const placeOf=name=>S.places.find(p=>p.name===name&&isNum(p.lat)&&isNum(p.lng))||{};
+function naverDir(p,mode,from){
+  const d=merc(p.lat,p.lng),o0=from&&isNum(from.lat)?from:ui.me;
+  let o='-';
+  if(o0){const m=merc(o0.lat,o0.lng);o=m[0]+','+m[1]+','+encodeURIComponent(from&&from.name?from.name:'내 위치')}
+  return 'https://map.naver.com/p/directions/'+o+'/'+d[0]+','+d[1]+','+encodeURIComponent(p.name)+'/-/'+mode;
+}
+const naverApp=(p,mode)=>'nmap://route/'+(mode==='transit'?'public':mode)+'?dlat='+p.lat+'&dlng='+p.lng+'&dname='+q(p.name)+'&appname=io.github.trip';
+function gmapDir(p,from){
+  const o0=from&&isNum(from.lat)?from:ui.me;
+  return 'https://www.google.com/maps/dir/?api=1&destination='+q(p.lat+','+p.lng)+(o0?'&origin='+q(o0.lat+','+o0.lng):'');
+}
+function dirLinks(p,full){
+  if(!isNum(p.lat)||!isNum(p.lng))return '';
+  if(inKorea(p)){
+    let h=lk(naverDir(p,'transit'),'네이버 길찾기','lk pri');
+    if(full)h+=lk(naverDir(p,'car'),'자동차')+lk(naverDir(p,'walk'),'도보')+'<a class="lk" href="'+esc(naverApp(p,'transit'))+'">네이버 앱으로</a>';
+    return h;
+  }
+  return lk(gmapDir(p),'길찾기 (구글)','lk pri');
+}
+const legUrl=(a,b)=>inKorea(b)?naverDir(b,'transit',a):gmapDir(b,a);
+const nearList=(ref,pts)=>pts.filter(p=>p.id!==ref.id).map(p=>({p,km:hav(ref,p)})).sort((a,b)=>a.km-b.km).slice(0,6);
 function vMap(){
   const pts=S.places.filter(p=>isNum(p.lat)&&isNum(p.lng));
-  const no=S.places.length-pts.length;
+  const no=S.places.filter(p=>!(isNum(p.lat)&&isNum(p.lng)));
   let h='';
-  if(!pts.length)h+='<div class="empty">지도에 찍을 좌표가 아직 없어요.<br>갈 곳을 수정해서 좌표를 넣거나, Claude에게 장소 목록을 주면 좌표까지 찾아서 넣어 줘요.</div>';
+  if(!pts.length)h+='<div class="empty">지도에 찍을 좌표가 아직 없어요.'+(no.length?'<br><button type="button" class="btn sm" style="margin-top:10px" data-act="geo-all">이름으로 좌표 찾기</button>':'')+'</div>';
   else{
-    const sel=pts.find(p=>p.id===ui.pin);
-    const zoomed=ui.zoom&&sel;
-    h+=mapSvg(zoomed?pts.filter(p=>hav(sel,p)<=3):pts,zoomed?3:0);
-    if(sel)h+='<div class="acts" style="margin-top:10px"><button type="button" class="chip" data-act="zoom" aria-pressed="'+!!ui.zoom+'">선택한 곳 주변만 크게 보기 (3km)</button></div>';
-    if(sel){
-      const near=pts.filter(p=>p.id!==sel.id).map(p=>({p,km:hav(sel,p)})).sort((a,b)=>a.km-b.km).slice(0,6);
-      const s=(sel.name+(sel.area?' '+sel.area:'')).trim();
-      h+='<section class="sec"><div class="sh"><h2>'+esc(sel.name)+' 근처</h2></div><div class="acts" style="margin:0 0 10px">'+lk(nmap(s),'네이버지도')+lk(gmap(s),'구글지도')+lk(nmap(sel.name+' 근처 맛집'),'근처 맛집')+lk(nmap(sel.name+' 근처 카페'),'근처 카페')+(ui.edit?'<button type="button" class="lk" data-act="addplace" data-id="'+sel.id+'">일정에 넣기</button>':'')+'</div>'
-        +(near.length?'<div class="rows">'+near.map(n=>'<button type="button" class="nrow row" data-act="pin" data-id="'+n.p.id+'"><div class="eb"><div class="et">'+esc(n.p.name)+'<span class="tag">'+esc(n.p.kind)+'</span>'+(n.p.day?'<span class="tag">'+dayNo(n.p.day)+'일차</span>':'')+(n.p.done?'<span class="tag">다녀옴</span>':'')+'</div></div><span class="amt">'+fmtKm(n.km).replace(/(km|m)$/,'<small>$1</small>')+'</span></button>').join('')+'</div><p class="sub" style="margin-top:6px">직선거리예요. 실제 길은 지도 앱에서 확인해 주세요.</p>':'<div class="empty">다른 장소가 없어요</div>')+'</section>';
-    }else h+='<p class="sub" style="margin-top:10px">핀을 누르면 그 주변이 가까운 순으로 나와요.</p>';
-    if(no)h+='<p class="sub" style="margin-top:6px">좌표가 없는 '+no+'곳은 약도에 못 찍었어요.</p>';
+    if(leafletState===0)loadLeaflet();
+    const sel=pts.find(p=>p.id===ui.pin),zoomed=ui.zoom&&sel;
+    if(leafletState===2)h+='<div class="map"><div id="lmap-slot"></div><div class="map-cap"><span>숫자 = 일정에 넣은 날 · ? = 아직 미정</span><span>지도 © OpenStreetMap</span></div></div>';
+    else h+=mapSvg(zoomed?pts.filter(p=>hav(sel,p)<=3):pts,zoomed?3:0);
+    h+='<div class="acts" style="margin-top:10px"><button type="button" class="chip" data-act="locate" aria-pressed="'+!!ui.me+'">내 위치에서 가까운 곳</button>'+(sel?'<button type="button" class="chip" data-act="zoom" aria-pressed="'+!!ui.zoom+'">선택한 곳 주변만 크게 보기 (3km)</button>':'')+'</div>';
+    const ref=sel||ui.me;
+    if(ref){
+      const near=nearList(ref,pts);
+      h+='<section class="sec"><div class="sh"><h2>'+(sel?esc(sel.name)+' 근처':'내 위치 근처')+'</h2></div>';
+      if(sel){
+        const s=(sel.name+(sel.area?' '+sel.area:'')).trim();
+        h+='<div class="acts" style="margin:0 0 10px">'+dirLinks(sel,true)+lk(nmap(s),'네이버지도')+lk(gmap(s),'구글지도')+lk(nmap(sel.name+' 근처 맛집'),'근처 맛집')+lk(nmap(sel.name+' 근처 카페'),'근처 카페')+(ui.edit?'<button type="button" class="lk" data-act="addplace" data-id="'+sel.id+'">일정에 넣기</button>':'')+'</div>';
+      }
+      h+=near.length?'<div class="rows">'+near.map(n=>'<button type="button" class="nrow row" data-act="pin" data-id="'+n.p.id+'"><div class="eb"><div class="et">'+esc(n.p.name)+'<span class="tag">'+esc(n.p.kind)+'</span>'+(n.p.day?'<span class="tag">'+dayNo(n.p.day)+'일차</span>':'')+(n.p.done?'<span class="tag">다녀옴</span>':'')+'</div></div><span class="amt">'+fmtKm(n.km).replace(/(km|m)$/,'<small>$1</small>')+'</span></button>').join('')+'</div><p class="sub" style="margin-top:6px">직선거리예요. 실제 길은 지도 앱에서 확인해 주세요.</p>':'<div class="empty">다른 장소가 없어요</div>';
+      h+='</section>';
+    }else h+='<p class="sub" style="margin-top:10px">핀을 누르거나 위의 <b>내 위치</b> 버튼을 누르면 가까운 순으로 나와요.</p>';
+    if(no.length)h+='<div class="hint" style="margin-top:10px">좌표가 없는 '+no.length+'곳은 지도에 못 찍었어요. <button type="button" class="lk" data-act="geo-all">이름으로 좌표 찾기</button></div>';
   }
   const t=S.trip,nv=safe(t.mapNaver),gg=safe(t.mapGoogle);
-  h+='<section class="sec"><div class="sh"><h2>진짜 지도로 한 번에 보기</h2></div><div class="hint">위 약도는 좌표로 그린 그림이에요. 내 위치와 길 찾기는 네이버·구글 지도 앱이 훨씬 정확해요. 갈 곳을 지도 앱에 저장해 두고 그 링크를 붙여 두면 여기서 바로 열려요.</div><div class="acts" style="margin-top:10px">'+(nv?lk(nv,'네이버 저장 폴더 열기','btn sm'):'')+(gg?lk(gg,'구글 저장 목록 열기','btn sm'):'')+(cap.downloads?'<button type="button" class="btn sm" data-act="csv">구글 내지도용 CSV 저장</button>':'')+'</div>'
+  h+='<section class="sec"><div class="sh"><h2>지도 앱으로 보기</h2></div><div class="hint">위 지도는 OpenStreetMap이에요. 대중교통 길찾기와 가게 정보는 네이버·구글 지도 앱이 더 정확해요. 갈 곳을 지도 앱에 저장해 두고 그 링크를 붙여 두면 여기서 바로 열려요.</div><div class="acts" style="margin-top:10px">'+(nv?lk(nv,'네이버 저장 폴더 열기','btn sm'):'')+(gg?lk(gg,'구글 저장 목록 열기','btn sm'):'')+'<button type="button" class="btn sm" data-act="csv">구글 내지도용 CSV 저장</button></div>'
     +'<details class="how"><summary>저장 폴더 만드는 법</summary><ol><li>네이버지도(또는 구글지도) 앱에서 가고 싶은 곳을 저장하고, 새 폴더(목록)를 만들어 모아요.</li><li>폴더의 공유 링크를 복사해요.</li><li>여기서 편집 → 더보기 → 여행 설정에 붙여 넣으면 위 버튼이 생겨요.</li></ol></details></section>';
   return h;
+}
+
+/* ---- 해외여행: 여권 만료 확인, 사람 카드, 준비물·연락처 한 번에 추가 ---- */
+function addMonths(d,n){const p=d.split('-').map(Number),t=new Date(Date.UTC(p[0],p[1]-1+n,p[2]));return t.getUTCFullYear()+'-'+pad(t.getUTCMonth()+1)+'-'+pad(t.getUTCDate())}
+function memberRow(m,i){
+  const exp=m.passportExp,end=S.trip.end;
+  let warn='';
+  if(exp&&end){if(exp<end)warn='<span class="pill need">여권 만료</span>';else if(exp<addMonths(end,6))warn='<span class="pill wait">여권 6개월 미만</span>'}
+  const docs=[['영문 이름',m.nameEn],['생년월일',m.birth],['여권번호',m.passportNo],['여권 만료일',exp],['비자·전자입국',m.visa],['비상 연락처',m.emergency],['혈액형·알레르기·약',m.health],['여행자 보험',m.insurance]].filter(x=>x[1]);
+  const det=docs.length?'<details class="how"><summary>여권·서류 보기</summary><dl class="kv">'+docs.map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+' <button type="button" class="lk" data-act="copy" data-v="'+esc(x[1])+'">복사</button></dd></div>').join('')+'</dl></details>':'';
+  return '<div class="row" style="flex-wrap:wrap">'+av(m,i)+'<div class="eb"><div class="et">'+esc(m.name)+(m.role?'<span class="tag">'+esc(m.role)+'</span>':'')+warn+'</div>'+(m.phone?'<div class="sub mono">'+esc(m.phone)+'</div>':'')+(m.note?'<div class="nt">'+nl(m.note)+'</div>':'')+'</div>'+(m.phone?'<button type="button" class="btn sm" data-act="copy" data-v="'+esc(m.phone)+'">복사</button>':'')+penBtn('member',m.id)+(det?'<div style="flex-basis:100%">'+det+'</div>':'')+'</div>';
+}
+const PACK_OVERSEAS=['여권 (만료일이 6개월 이상 남았는지)','비자 · 전자입국신고 (ESTA 등)','항공권 · 숙소 바우처 캡처','환전한 현금 · 해외결제 카드','여행자 보험 가입','유심 · eSIM · 로밍','멀티 어댑터 (돼지코)','보조배터리 (기내 반입)','상비약 · 처방전','세면도구 (기내 액체 100ml 이하)'];
+async function presetPack(){
+  const have=new Set(S.pack.map(p=>p.text)),add=PACK_OVERSEAS.filter(t=>!have.has(t));
+  if(!add.length){toast('이미 다 들어 있어요');return}
+  const ok=await guard(async()=>{for(const t of add)await W.put('pack',{id:uid(),group:'해외여행',text:t})});
+  if(ok)toast(add.length+'개를 추가했어요');
+}
+async function presetInfo(){
+  const items=[{label:'영사콜센터 (24시간)',value:'+82-2-3210-0404',url:''},{label:'해외 안전 정보 · 나라별 대사관',value:'외교부 해외안전여행',url:'https://www.0404.go.kr'},{label:'카드 분실 신고',value:'카드사 앱·고객센터 번호를 미리 저장해 두세요',url:''}];
+  const have=new Set(S.info.map(x=>x.label)),add=items.filter(x=>!have.has(x.label));
+  if(!add.length){toast('이미 다 들어 있어요');return}
+  const ok=await guard(async()=>{for(const x of add)await W.put('info',Object.assign({id:uid()},x))});
+  if(ok)toast(add.length+'개를 추가했어요');
 }
 
 /* ---------- 화면: 예약·숙소 ---------- */
@@ -694,7 +859,7 @@ function vMoney(){
   const c=calc(),b=Number(S.trip.budget)||0,n=S.members.length||1;
   let h='<div class="bal"><span class="lab">공금 잔액 (걷은 회비 − 공금으로 쓴 돈)</span><div class="num'+(c.pool<0?' neg':'')+'">'+num(c.pool)+'<small>원</small></div>';
   if(b>0)h+='<div class="bar-t'+(c.total>b?' over':'')+'"><i style="width:'+Math.min(100,Math.round(c.total/b*100))+'%"></i></div><div class="cap"><span>전체 지출 '+Math.round(c.total/b*100)+'%</span><span>예산 '+won(b)+'</span></div>';
-  h+='<div class="stat3"><div><span class="lab">걷은 회비</span><b>'+num(c.C)+'</b></div><div><span class="lab">전체 지출</span><b>'+num(c.total)+'</b></div><div><span class="lab">1인당 지출</span><b>'+num(c.total/n)+'</b></div></div></div>';
+  h+='<div class="stat3"><div><span class="lab">걷은 회비</span><b>'+num(c.C)+'</b></div><div><span class="lab">전체 지출</span><b>'+num(c.total)+'</b></div><div><span class="lab">1인당 지출</span><b>'+num(c.total/n)+'</b></div></div>'+(S.trip.fxCode&&S.trip.fxRate?'<div class="cap" style="margin-top:10px"><span>환율 1 '+esc(S.trip.fxCode)+' = '+esc(S.trip.fxRate)+'원</span></div>':'')+'</div>';
   h+='<section class="sec"><div class="sh"><h2>정산</h2></div><div class="rows">'+S.members.map((m,i)=>{const v=Math.round(c.net[m.id]||0);return '<div class="row">'+av(m,i)+'<div class="eb"><div class="et">'+esc(m.name)+(m.id===c.tre?'<span class="tag">공금 보관</span>':'')+'</div><div class="sub">낸 돈 '+num(c.paid[m.id]+c.contrib[m.id])+' · 내 몫 '+num(c.share[m.id])+'</div></div><div class="amt '+(v>0?'pos':v<0?'neg':'')+'">'+(v>0?'+':v<0?'−':'')+num(Math.abs(v))+'<small>'+(v>0?'받을 돈':v<0?'보낼 돈':'')+'</small></div></div>'}).join('')+(c.tr.length?c.tr.map(t=>'<div class="tf"><span>'+esc(mname(t.from))+'</span><span class="ar">→</span><span>'+esc(mname(t.to))+'</span><span class="amt">'+num(t.amt)+'<small>원</small></span></div>').join(''):'<div class="tf sub">정산할 금액이 없어요</div>')+'</div><p class="sub" style="margin-top:8px">남은 공금은 총무가 들고 있다고 보고 계산해요. 여행이 끝난 뒤 위 순서대로 보내면 정산이 끝나요.</p></section>';
   const tot=c.byCat.reduce((s,x)=>s+x.v,0);
   if(tot>0)h+='<section class="sec"><div class="sh"><h2>쓴 곳별</h2></div><div class="cats">'+c.byCat.map((x,i)=>x.v>0?'<i style="--c:var(--l'+(i+1)+');flex:'+x.v+'"></i>':'').join('')+'</div>'+c.byCat.map((x,i)=>x.v>0?'<div class="catrow"><span class="cdot" style="--c:var(--l'+(i+1)+')"></span>'+esc(x.c)+'<span class="amt">'+num(x.v)+'<small>원 · '+Math.round(x.v/tot*100)+'%</small></span></div>':'').join('')+'</section>';
@@ -707,7 +872,7 @@ function vMoney(){
     h+='<div class="dgrp"><span>'+md(d)+'</span><span class="mono">'+num(sum(rows,e=>e.amount))+'원</span></div><div class="rows">'+rows.map(e=>{
       const ci=Math.max(0,CATS.indexOf(e.cat));
       const sp=e.split&&e.split.length?(e.split.length<=3?' · '+e.split.map(mname).join('·')+' 분담':' · '+e.split.length+'명 분담'):'';
-      return '<div class="row"><span class="cdot" style="--c:var(--l'+(ci+1)+')"></span><div class="eb"><div class="et">'+esc(e.title)+'</div><div class="sub">'+esc(e.cat)+' · '+(e.payer==='pool'?'공금':esc(mname(e.payer))+' 결제')+sp+'</div>'+(e.note?'<div class="nt">'+nl(e.note)+'</div>':'')+'</div><div class="amt">'+num(e.amount)+'<small>원</small></div>'+penBtn('expense',e.id)+'</div>';
+      return '<div class="row"><span class="cdot" style="--c:var(--l'+(ci+1)+')"></span><div class="eb"><div class="et">'+esc(e.title)+'</div><div class="sub">'+esc(e.cat)+' · '+(e.payer==='pool'?'공금':esc(mname(e.payer))+' 결제')+sp+(e.local>0?' · '+num(e.local)+' '+esc(e.cur||''):'')+'</div>'+(e.note?'<div class="nt">'+nl(e.note)+'</div>':'')+'</div><div class="amt">'+num(e.amount)+'<small>원</small></div>'+penBtn('expense',e.id)+'</div>';
     }).join('')+'</div>';
   });
   return h+addBtn('expense','지출 추가')+'</section>';
@@ -716,7 +881,7 @@ function vMoney(){
 /* ---------- 화면: 더보기 ---------- */
 function vMore(){
   const done=LS.get('pack',{});
-  let h='<section class="sec"><div class="sh"><h2>인원 '+S.members.length+'명</h2></div><div class="rows">'+S.members.map((m,i)=>'<div class="row">'+av(m,i)+'<div class="eb"><div class="et">'+esc(m.name)+(m.role?'<span class="tag">'+esc(m.role)+'</span>':'')+'</div>'+(m.phone?'<div class="sub mono">'+esc(m.phone)+'</div>':'')+(m.note?'<div class="nt">'+nl(m.note)+'</div>':'')+'</div>'+(m.phone?'<button type="button" class="btn sm" data-act="copy" data-v="'+esc(m.phone)+'">복사</button>':'')+penBtn('member',m.id)+'</div>').join('')+'</div>'+addBtn('member','인원 추가')+'</section>';
+  let h='<section class="sec"><div class="sh"><h2>인원 '+S.members.length+'명</h2></div><div class="rows">'+S.members.map(memberRow).join('')+'</div>'+addBtn('member','인원 추가')+'</section>';
   const up=events().filter(e=>e.at>=NOW).slice(0,30);
   h+='<section class="sec"><div class="sh"><h2>알림</h2></div><div class="hint" style="margin-bottom:10px">이 화면은 열어 볼 때 남은 시간을 보여줘요. 휴대폰이 먼저 알려주게 하려면 아래 <b>캘린더에 넣기</b>를 눌러 구글 캘린더에 저장해 두세요. 캘린더 앱이 알림을 보내줘요.</div>'+(up.length?'<div class="rows">'+up.map(e=>'<div class="row evrow"><span class="mono" style="font-size:13px;color:var(--muted);white-space:nowrap">'+md(e.date)+' '+esc(e.time)+'</span><div class="eb"><div class="et">'+esc(e.title)+'</div></div>'+lk(gcal(e),ic('cal',13)+'캘린더')+'</div>').join('')+'</div>':'<div class="empty">앞으로 남은 일정이 없어요</div>')+'</section>';
   h+='<section class="sec"><div class="sh"><h2>준비물</h2></div>';
@@ -725,11 +890,11 @@ function vMore(){
     h+=groups.map(g=>'<div class="pk-g">'+esc(g)+'</div><div class="rows">'+S.pack.filter(p=>(p.group||'기타')===g).map(p=>'<div class="row"><button type="button" class="pkrow" role="checkbox" aria-checked="'+!!done[p.id]+'" data-act="pk" data-id="'+p.id+'"><span class="ck">'+ic('check',16)+'</span><span class="pkt">'+esc(p.text)+'</span></button>'+penBtn('pack',p.id)+'</div>').join('')+'</div>').join('');
     h+='<p class="sub" style="margin-top:8px">준비물 체크는 내 휴대폰에만 저장돼요.</p>';
   }else h+='<div class="empty">준비물 목록이 비어 있어요</div>';
-  h+=addBtn('pack','준비물 추가')+'</section>';
-  h+='<section class="sec"><div class="sh"><h2>메모 · 링크</h2></div>'+(S.info.length?'<div class="rows">'+S.info.map(n=>'<div class="row"><div class="eb"><div class="et">'+esc(n.label)+'</div><div class="sub">'+esc(n.value)+'</div></div>'+(safe(n.url)?lk(safe(n.url),'열기'):'')+penBtn('info',n.id)+'</div>').join('')+'</div>':'<div class="empty">메모가 없어요</div>')+addBtn('info','메모 추가')+'</section>';
+  h+=addBtn('pack','준비물 추가')+(ui.edit?'<button type="button" class="add" data-act="preset-pack">'+ic('plus',16)+'해외여행 준비물 한 번에 추가</button>':'')+'</section>';
+  h+='<section class="sec"><div class="sh"><h2>메모 · 링크</h2></div>'+(S.info.length?'<div class="rows">'+S.info.map(n=>'<div class="row"><div class="eb"><div class="et">'+esc(n.label)+'</div><div class="sub">'+esc(n.value)+'</div></div>'+(safe(n.url)?lk(safe(n.url),'열기'):'')+penBtn('info',n.id)+'</div>').join('')+'</div>':'<div class="empty">메모가 없어요</div>')+addBtn('info','메모 추가')+(ui.edit?'<button type="button" class="add" data-act="preset-info">'+ic('plus',16)+'해외 긴급 연락처 한 번에 추가</button>':'')+'</section>';
   h+=vLive();
   h+='<section class="sec"><div class="sh"><h2>공유</h2></div><div class="stack"><button type="button" class="btn" data-act="copyshare">카톡에 붙여넣을 일정 요약 복사</button><button type="button" class="btn" data-act="copysnap">지금 화면을 링크로 보내기 (읽기 전용)</button></div></section>';
-  if(ui.edit)h+='<section class="sec"><div class="sh"><h2>여행 설정</h2></div><div class="stack"><button type="button" class="btn" data-act="edit" data-k="trip" data-id="">여행 이름 · 날짜 · 예산 · 공지 · 지도 링크 수정</button>'+(S.trip.sample?'<button type="button" class="btn danger" data-act="reset-sample">'+(armed==='reset'?'한 번 더 누르면 예시가 지워져요':'예시 지우고 새로 시작')+'</button>':'')+'</div></section>';
+  if(ui.edit)h+='<section class="sec"><div class="sh"><h2>여행 설정</h2></div><div class="stack"><button type="button" class="btn" data-act="edit" data-k="trip" data-id="">여행 이름 · 날짜 · 예산 · 공지 · 지도 링크 수정</button>'+(mode==='local'?'<button type="button" class="btn danger" data-act="reset-sample">'+(armed==='reset'?'한 번 더 누르면 이 폰의 내용이 모두 지워져요':'이 폰의 여행 비우고 새로 시작')+'</button>':'')+'</div></section>';
   return h;
 }
 function vEmpty(){
@@ -755,11 +920,15 @@ function render(){
     const s=c.querySelector('[aria-pressed="true"]');
     if(s&&(s.offsetLeft<c.scrollLeft||s.offsetLeft+s.offsetWidth>c.scrollLeft+c.clientWidth))c.scrollLeft=Math.max(0,s.offsetLeft-24);
   });
+  syncMap();
 }
 let raf=0;
 function scheduleRender(){
   if(raf)return;
-  raf=requestAnimationFrame(()=>{raf=0;render();if(ui.sheet&&(ui.sheet.kind==='move'||ui.sheet.kind==='addplace'))sheetRender()});
+  raf=1;
+  const run=()=>{if(!raf)return;raf=0;render();if(ui.sheet&&(ui.sheet.kind==='move'||ui.sheet.kind==='addplace'))sheetRender()};
+  requestAnimationFrame(run);
+  setTimeout(run,80);
 }
 let tt;
 function toast(m){const el=$('#toast');el.innerHTML='<div class="toast">'+esc(m)+'</div>';clearTimeout(tt);tt=setTimeout(()=>{el.innerHTML=''},2800)}
@@ -790,6 +959,8 @@ const FORM={
     {k:'start',l:'출발일',t:'date',req:1},
     {k:'end',l:'도착일',t:'date',req:1},
     {k:'budget',l:'예산 (원, 없으면 0)',t:'num'},
+    {k:'fxCode',l:'현지 통화 (해외여행)',t:'text',ph:'JPY, USD, EUR …'},
+    {k:'fxRate',l:'환율: 현지 통화 1단위당 몇 원',t:'num',ph:'예: 9.2'},
     {k:'treasurer',l:'총무 (공금을 보관하는 사람)',t:'member'},
     {k:'notice',l:'공지 (홈 맨 위에 보여요)',t:'area',ph:'집합 장소, 시간, 꼭 알아야 할 것'},
     {k:'mapNaver',l:'네이버지도 저장 폴더 링크 (선택)',t:'url'},
@@ -799,7 +970,16 @@ const FORM={
     {k:'name',l:'이름',t:'text',req:1},
     {k:'role',l:'역할',t:'text',ph:'총무, 운전, 사진 …'},
     {k:'phone',l:'연락처',t:'text',ph:'010-0000-0000'},
-    {k:'note',l:'메모',t:'area',ph:'알레르기, 출발 장소 …'}]},
+    {k:'note',l:'메모',t:'area',ph:'알레르기, 출발 장소 …'},
+    {t:'info',l:'아래 여권·서류 정보는 링크를 아는 사람 모두에게 보여요. 해외여행에서 꼭 필요한 사람만 넣어 주세요.'},
+    {k:'nameEn',l:'영문 이름 (여권 표기)',t:'text',ph:'HONG GILDONG'},
+    {k:'birth',l:'생년월일',t:'date'},
+    {k:'passportNo',l:'여권번호',t:'text'},
+    {k:'passportExp',l:'여권 만료일',t:'date'},
+    {k:'visa',l:'비자 · 전자입국 정보 (선택)',t:'text',ph:'ESTA 승인번호 등'},
+    {k:'emergency',l:'비상 연락처 (가족)',t:'text',ph:'이름 · 전화번호'},
+    {k:'health',l:'혈액형 · 알레르기 · 복용약',t:'text'},
+    {k:'insurance',l:'여행자 보험 (보험사 · 증권번호)',t:'text'}]},
   item:{t:'일정',f:[
     {k:'date',l:'날짜',t:'date',req:1},
     {k:'time',l:'시간 (없으면 비워 두기)',t:'time'},
@@ -848,7 +1028,8 @@ const FORM={
     {k:'date',l:'날짜',t:'date',req:1},
     {k:'title',l:'내용',t:'text',req:1},
     {k:'cat',l:'분류',t:'sel',o:CATS},
-    {k:'amount',l:'금액 (원)',t:'num',req:1},
+    {k:'local',l:'현지 금액 (해외, 선택)',t:'num'},
+    {k:'amount',l:'원화 금액 (현지 금액을 넣으면 환율로 자동 계산)',t:'num'},
     {k:'payer',l:'누가 냈나요',t:'sel',o:()=>[['pool','공금'],...S.members.map(m=>[m.id,m.name+' (개인 결제)'])]},
     {k:'split',l:'누구 몫인가요 (모두 선택하면 전원)',t:'members'},
     {k:'note',l:'메모',t:'area'}]},
@@ -871,7 +1052,7 @@ const DEF={
   place:()=>({name:'',kind:'관광',area:'',day:'',naver:'',ll:'',note:''}),
   booking:()=>({type:'기차',title:'',status:'확정',date:S.trip.start,time:'',from:'',to:'',place:'',people:S.members.length,seat:'',code:'',price:0,link:'',note:''}),
   lodging:()=>({name:'',address:'',naver:'',inDate:S.trip.start,inTime:'15:00',outDate:S.trip.end,outTime:'11:00',room:'',price:0,code:'',phone:'',note:''}),
-  expense:()=>({date:clampToday(),title:'',cat:'식비',amount:0,payer:'pool',split:[],note:''}),
+  expense:()=>({date:clampToday(),title:'',cat:'식비',local:0,amount:0,payer:'pool',split:[],note:''}),
   contrib:()=>({member:(S.members[0]||{}).id||'',amount:0,date:TODAY,note:''}),
   member:()=>({name:'',role:'',phone:'',note:''}),
   pack:()=>({group:'꼭 챙기기',text:''}),
@@ -883,6 +1064,7 @@ function optsOf(f){
   return o.map(x=>Array.isArray(x)?x:[x,x]);
 }
 function fieldHTML(f,val){
+  if(f.t==='info')return '<div class="hint" style="margin-bottom:14px">'+esc(f.l)+'</div>';
   const id='f-'+f.k,v=val==null?'':val;
   let inp;
   if(f.t==='area')inp='<textarea id="'+id+'" rows="3" placeholder="'+esc(f.ph||'')+'">'+esc(v)+'</textarea>';
@@ -890,6 +1072,7 @@ function fieldHTML(f,val){
   else if(f.t==='members'){const sel=(Array.isArray(v)&&v.length)?v:S.members.map(m=>m.id);inp='<div class="mchips" id="'+id+'">'+S.members.map(m=>'<label class="mchip"><input type="checkbox" value="'+esc(m.id)+'"'+(sel.includes(m.id)?' checked':'')+'><span>'+esc(m.name)+'</span></label>').join('')+'</div>'}
   else if(f.t==='num')inp='<input id="'+id+'" type="number" inputmode="numeric" min="0" step="any" value="'+esc(v)+'">';
   else inp='<input id="'+id+'" type="'+(f.t==='url'?'url':f.t)+'" placeholder="'+esc(f.ph||'')+'" value="'+esc(v)+'">';
+  if(f.k==='ll')inp+='<button type="button" class="btn sm" style="align-self:flex-start" data-act="geo-fill">이름으로 좌표 찾기</button>';
   return '<div class="field"><label for="'+id+'">'+esc(f.l)+(f.req?' *':'')+'</label>'+inp+'</div>';
 }
 const xBtn='<button type="button" class="x" data-act="sheet-close" aria-label="닫기">'+ic('x',18)+'</button>';
@@ -939,6 +1122,7 @@ function closeSheet(){ui.sheet=null;armed=null;sheetRender()}
 function readForm(F){
   const out={};
   for(const f of F.f){
+    if(f.t==='info')continue;
     const el=$('#f-'+f.k);let v;
     if(f.t==='members'){v=$$('input:checked',el).map(i=>i.value);if(v.length===S.members.length)v=[]}
     else if(f.t==='num')v=Number(el.value)||0;
@@ -952,6 +1136,12 @@ async function saveSheet(){
   const F=FORM[sh.kind],v=readForm(F);
   for(const f of F.f){if(f.req&&!v[f.k]){toast(f.l.replace(/ \(.*$/,'')+'을(를) 입력해 주세요');const el=$('#f-'+f.k);if(el)el.focus();return}}
   if(sh.kind==='trip'&&dn(v.end)<dn(v.start)){toast('도착일이 출발일보다 빠를 수 없어요');return}
+  if(sh.kind==='expense'){
+    const rate=Number(S.trip.fxRate)||0;
+    if(v.local>0&&rate>0)v.amount=Math.round(v.local*rate);
+    if(!(v.amount>0)){toast(v.local>0?'여행 설정에서 환율을 먼저 넣어 주세요':'금액을 넣어 주세요');return}
+    v.cur=v.local>0?(S.trip.fxCode||''):'';
+  }
   busy=true;
   const ok=await guard(async()=>{
     if(sh.kind==='trip'){await DB.doc('trip/main').update(clean(v));return}
@@ -962,7 +1152,7 @@ async function saveSheet(){
     else{if(sh.kind==='place')v.done=false;await W.put(CN(sh.kind),Object.assign({id:uid()},v))}
   });
   busy=false;
-  if(ok){if(sh.kind==='item')ui.day=v.date;closeSheet();toast('저장했어요')}
+  if(ok){if(sh.kind==='item')ui.day=v.date;closeSheet();toast('저장했어요');if(sh.kind==='place'&&!(isNum(v.lat)&&isNum(v.lng)))setTimeout(geoAll,600)}
 }
 async function deleteSheet(){
   const sh=ui.sheet;if(!sh||!sh.id)return;
@@ -1034,7 +1224,7 @@ async function saveBulk(){
   busy=true;
   const ok=await guard(async()=>{for(let i=0;i<list.length;i+=5)await Promise.all(list.slice(i,i+5).map(p=>W.put('places',p)))});
   busy=false;
-  if(ok){closeSheet();toast(list.length+'곳을 추가했어요')}
+  if(ok){closeSheet();toast(list.length+'곳을 추가했어요');setTimeout(geoAll,800)}
 }
 async function startTrip(){
   const d=iso(new Date(Date.now()+14*864e5)),m1=uid();
@@ -1078,6 +1268,11 @@ document.addEventListener('click',e=>{
     case 'pin':ui.pin=ui.pin===d.id&&b.tagName==='g'?null:d.id;render();break;
     case 'hide':ui.hide=!ui.hide;render();break;
     case 'zoom':ui.zoom=!ui.zoom;render();break;
+    case 'locate':locate();break;
+    case 'geo-all':geoAll();break;
+    case 'geo-fill':geoFill();break;
+    case 'preset-pack':presetPack();break;
+    case 'preset-info':presetInfo();break;
     case 'chk':{const p=S.places.find(x=>x.id===d.id);if(p)guard(()=>W.upd('places',p.id,{done:!p.done}));break}
     case 'pk':togglePack(d.id);render();break;
     case 'copy':copyText(d.v);break;
@@ -1271,7 +1466,7 @@ function importSnap(){
 }
 function banner(){
   if(mode==='snap')return '<div class="hint" style="margin-bottom:14px">링크로 받은 화면이에요. 읽기만 할 수 있어요.<div class="acts"><button type="button" class="lk" data-act="import-snap">내 폰에 복사해서 쓰기</button></div></div>';
-  if(mode==='local'&&ui.tab==='home')return '<div class="hint" style="margin-bottom:14px">지금은 이 폰에만 저장돼요. 같이 고치려면 더보기에서 <b>공동 편집 켜기</b>를 해 주세요.</div>';
+  if(mode==='local'&&ui.tab==='home')return '<div class="hint" style="margin-bottom:14px">입력한 내용은 <b>이 폰에만</b> 저장되고 다른 사람에게 보이지 않아요. 처음 열면 부산 예시가 들어 있어요. 내 여행으로 쓰려면 편집을 켜고 더보기 아래쪽 <b>이 폰의 여행 비우고 새로 시작</b>을 눌러 주세요.</div>';
   return '';
 }
 const FB_RULES='{"rules":{"trips":{"$t":{".read":true,".write":true}}}}';
