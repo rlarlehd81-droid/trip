@@ -842,7 +842,7 @@ function whoHTML(){
 }
 const WX={s:0,d:null};
 const wxLabel=c=>c===0?'맑음':c<=2?'구름 조금':c===3?'흐림':c<=48?'안개':c<=57?'이슬비':c<=67?'비':c<=77?'눈':c<=82?'소나기':c<=86?'눈 소나기':'뇌우';
-function wxLoc(){const p=S.places.filter(x=>isNum(x.lat)&&isNum(x.lng));return p.length?{lat:p.reduce((s,x)=>s+x.lat,0)/p.length,lng:p.reduce((s,x)=>s+x.lng,0)/p.length}:null}
+function wxLoc(){const c=wxCustom();if(c)return {lat:c.lat,lng:c.lng};const p=S.places.filter(x=>isNum(x.lat)&&isNum(x.lng));return p.length?{lat:p.reduce((s,x)=>s+x.lat,0)/p.length,lng:p.reduce((s,x)=>s+x.lng,0)/p.length}:null}
 async function maybeWeather(){
   if(WX.s!==0||!S.trip)return;
   let L=wxLoc();
@@ -857,13 +857,13 @@ async function maybeWeather(){
     if(!L){WX.failDest=dest;scheduleRender();return}
   }
   const key=L.lat.toFixed(1)+','+L.lng.toFixed(1),c=LS.get('wx',null);
-  if(c&&c.key===key&&Date.now()-c.t<36e5){WX.d=c.d;WX.s=2;scheduleRender();return}
+  if(c&&c.key===key&&Date.now()-c.t<36e5){WX.d=c.d;WX.s=2;scheduleRender();maybeClimate();return}
   WX.s=1;
   try{
     const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+L.lat.toFixed(3)+'&longitude='+L.lng.toFixed(3)+'&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16');
     const j=await r.json(),d={};
     (j.daily.time||[]).forEach((t,i)=>{d[t]={c:j.daily.weather_code[i],hi:j.daily.temperature_2m_max[i],lo:j.daily.temperature_2m_min[i],p:j.daily.precipitation_probability_max[i]}});
-    WX.d=d;WX.s=2;LS.set('wx',{key,t:Date.now(),d});
+    WX.d=d;WX.s=2;LS.set('wx',{key,t:Date.now(),d});maybeClimate();
   }catch(e){WX.s=-1}
   scheduleRender();
 }
@@ -887,19 +887,117 @@ function vShop(){
   return '<section class="sec"><div class="sh"><h2>살 것</h2>'+(S.shop.length?'<span class="sub mono">'+n+' / '+S.shop.length+' 샀어요</span>':'')+'</div>'+(S.shop.length?'<div class="rows">'+S.shop.map(x=>'<div class="row"><button type="button" class="pkrow" role="checkbox" aria-checked="'+!!x.done+'" data-act="shopdone" data-id="'+x.id+'"><span class="ck">'+ic('check',16)+'</span><span class="pkt"><span>'+esc(x.text)+'</span>'+((x.where||x.who)?'<span class="sub" style="display:block">'+esc([x.where,x.who?mname(x.who):''].filter(Boolean).join(' · '))+'</span>':'')+'</span></button>'+penBtn('shop',x.id)+'</div>').join('')+'</div>':'<div class="empty">사올 것이 없어요</div>')+addBtn('shop','살 것 추가')+'</section>';
 }
 /* ---- 홈 날씨 카드 · 지도 공유 글 붙여넣기 · 이름으로 검색 ---- */
+const wxCustom=()=>{
+  const t=S.trip||{};
+  if(t.wxName&&isNum(t.wxLat)&&isNum(t.wxLng))return {name:t.wxName,lat:t.wxLat,lng:t.wxLng};
+  return LS.get('wxcustom',null);
+};
+const wxName=()=>{const c=wxCustom();return c?c.name:((S.trip&&S.trip.dest)||'').trim()};
+function wxRow(label,w,extra){
+  return '<div class="wxrow"><span class="wxd">'+esc(label)+'</span><b>'+esc(wxLabel(w.c))+'</b><span class="mono">'+Math.round(w.lo)+'° / '+Math.round(w.hi)+'°</span><span class="sub">비 '+(w.p==null?'-':w.p)+'%</span>'+(w.p>=50?'<span class="pill wait">우산</span>':'')+(extra||'')+'</div>';
+}
+function climRow(c){
+  return '<div class="wxrow"><span class="wxd">'+esc(md(c.d))+'</span><b>평년</b><span class="mono">'+Math.round(c.lo)+'° / '+Math.round(c.hi)+'°</span><span class="sub">최근 '+c.n+'년 중 '+c.rain+'년 비</span></div>';
+}
 function homeWeather(){
   if(!S.trip)return '';
-  const dest=(S.trip.dest||'').trim();
-  if(WX.s===1)return '<section class="sec"><div class="sh"><h2>'+(dest?esc(dest)+' ':'')+'날씨</h2></div><div class="sub">날씨를 불러오는 중이에요…</div></section>';
-  if(WX.s!==2||!WX.d)return '';
-  const w0=WX.d[TODAY];
-  const row=(label,w)=>'<div class="wxrow"><span class="wxd">'+esc(label)+'</span><b>'+esc(wxLabel(w.c))+'</b><span class="mono">'+Math.round(w.lo)+'° / '+Math.round(w.hi)+'°</span><span class="sub">비 '+(w.p==null?'-':w.p)+'%</span>'+(w.p>=50?'<span class="pill wait">우산</span>':'')+'</div>';
-  let h='<section class="sec"><div class="sh"><h2>'+(dest?esc(dest)+' ':'')+'날씨</h2></div><div class="rows" style="padding:2px 14px">';
-  if(w0)h+=row('오늘',w0);
-  tripDays().filter(d=>d!==TODAY&&WX.d[d]).slice(0,4).forEach(d=>{h+=row(md(d),WX.d[d])});
-  const first=tripDays()[0];
-  if(first&&!WX.d[first]&&dn(first)>=dn(TODAY))h+='<div class="sub" style="padding:8px 0">'+md(first)+' 여행 날씨 예보는 '+md(fromDn(dn(first)-15))+'부터 볼 수 있어요.</div>';
+  const nm=wxName(),head='<div class="sh"><h2>'+(nm?esc(nm)+' ':'')+'날씨</h2><button type="button" class="more" data-act="wx-open">예보 · 지역 바꾸기</button></div>';
+  if(WX.s===1)return '<section class="sec">'+head+'<div class="sub">날씨를 불러오는 중이에요…</div></section>';
+  if(WX.s===-1)return '<section class="sec">'+head+'<div class="hint">날씨를 불러오지 못했어요. <button type="button" class="lk" data-act="wx-retry">다시 시도</button></div></section>';
+  if(WX.s!==2||!WX.d){
+    if(!nm&&!wxLoc())return '<section class="sec">'+head+'<div class="hint">목적지를 넣거나 지역을 골라 주면 날씨를 보여줘요. <button type="button" class="lk" data-act="wx-open">지역 고르기</button></div></section>';
+    return '';
+  }
+  const w0=WX.d[TODAY],days=tripDays(),first=days[0];
+  let h='<section class="sec">'+head+'<div class="rows" data-act="wx-open" style="padding:2px 14px;cursor:pointer">';
+  if(w0)h+=wxRow('오늘',w0);
+  days.filter(d=>d!==TODAY&&WX.d[d]).slice(0,4).forEach(d=>{h+=wxRow(md(d),WX.d[d])});
+  if(first&&!WX.d[first]&&dn(first)>=dn(TODAY)){
+    const c=WX.climate&&WX.climate.find(x=>x.d===first);
+    if(c)h+=climRow(c);
+    h+='<div class="sub" style="padding:8px 0">'+md(first)+' 날씨 예보는 '+md(fromDn(dn(first)-15))+'부터 볼 수 있어요.'+(c?' 지금은 최근 5년 평균을 보여줘요.':'')+'</div>';
+  }
   return h+'</div></section>';
+}
+function wxHTML(){
+  const nm=wxName(),dest=((S.trip&&S.trip.dest)||'').trim(),days=tripDays();
+  let h='<div class="scrim" data-act="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="날씨"><div class="sheet-h"><h2>날씨 예보</h2>'+xBtn+'</div>';
+  h+='<div class="hint" style="margin-bottom:12px"><b>'+esc(nm||'위치 없음')+'</b> 기준이에요. 아래에서 지역을 바꿀 수 있어요.</div>';
+  h+='<div class="field"><label for="wx-q">지역 바꾸기</label><div class="srch"><input id="wx-q" type="search" placeholder="예: 제주, 도쿄, 강릉" autocomplete="off"><button type="button" class="btn sm" data-act="wx-search">찾기</button></div><div class="acts" style="margin-top:0">'+(dest?'<button type="button" class="lk" data-act="wx-dest">목적지로 ('+esc(dest)+')</button>':'')+'<button type="button" class="lk" data-act="wx-here">내 위치</button></div><div id="wx-res"></div></div>';
+  if(WX.s===1)h+='<p class="sub">불러오는 중이에요…</p>';
+  else if(WX.s===-1)h+='<div class="hint">날씨를 불러오지 못했어요. <button type="button" class="lk" data-act="wx-retry">다시 시도</button></div>';
+  else if(WX.s!==2||!WX.d)h+='<p class="sub">지역을 고르면 예보가 나와요.</p>';
+  else{
+    h+='<div class="lab" style="margin:4px 0">앞으로 16일 예보</div><div class="rows" style="padding:2px 14px">';
+    Object.keys(WX.d).sort().forEach(d=>{h+=wxRow(d===TODAY?'오늘':md(d),WX.d[d],days.includes(d)?'<span class="tag">여행</span>':'')});
+    h+='</div>';
+    const first=days[0];
+    if(first&&!WX.d[first]&&dn(first)>=dn(TODAY)){
+      h+='<div class="lab" style="margin:14px 0 4px">여행 날짜 평년 날씨 (최근 5년 평균)</div>';
+      if(WX.climate&&WX.climate.length)h+='<div class="rows" style="padding:2px 14px">'+WX.climate.map(climRow).join('')+'</div>';
+      else h+='<p class="sub">'+(WX.climBusy?'계산하는 중이에요…':'불러오지 못했어요')+'</p>';
+      h+='<p class="sub" style="margin-top:6px">'+md(first)+' 날씨 예보는 '+md(fromDn(dn(first)-15))+'부터 나와요.</p>';
+    }
+  }
+  return h+'</div></div>';
+}
+async function maybeClimate(){
+  if(WX.climate||WX.climBusy||!S.trip)return;
+  const L=wxLoc(),days=tripDays().slice(0,7);
+  if(!L||!days.length||(WX.d&&WX.d[days[0]])||dn(days[0])<dn(TODAY))return;
+  const key=L.lat.toFixed(1)+','+L.lng.toFixed(1)+'|'+days[0]+'|'+days.length,c=LS.get('wxclim',null);
+  if(c&&c.key===key&&Date.now()-c.t<864e5){WX.climate=c.d;scheduleRender();return}
+  WX.climBusy=true;scheduleRender();
+  const yr=new Date().getFullYear(),acc=days.map(()=>({lo:0,hi:0,n:0,rain:0}));
+  try{
+    for(let k=1;k<=5;k++){
+      const base=dn(String(yr-k)+days[0].slice(4)),ds=days.map((_,i)=>fromDn(base+i));
+      const r=await fetch('https://archive-api.open-meteo.com/v1/archive?latitude='+L.lat.toFixed(3)+'&longitude='+L.lng.toFixed(3)+'&start_date='+ds[0]+'&end_date='+ds[ds.length-1]+'&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto');
+      const j=await r.json(),t=(j.daily&&j.daily.time)||[];
+      ds.forEach((dd,i)=>{
+        const x=t.indexOf(dd);
+        if(x<0)return;
+        const hi=j.daily.temperature_2m_max[x],lo=j.daily.temperature_2m_min[x],pr=j.daily.precipitation_sum[x];
+        if(hi==null||lo==null)return;
+        acc[i].hi+=hi;acc[i].lo+=lo;acc[i].n++;if(pr>=1)acc[i].rain++;
+      });
+    }
+    WX.climate=days.map((d,i)=>({d,lo:acc[i].lo/(acc[i].n||1),hi:acc[i].hi/(acc[i].n||1),n:acc[i].n,rain:acc[i].rain})).filter(x=>x.n>0);
+    LS.set('wxclim',{key,t:Date.now(),d:WX.climate});
+  }catch(e){WX.climate=null}
+  WX.climBusy=false;scheduleRender();
+}
+let WXSR=[];
+async function wxSearch(){
+  const qs=(($('#wx-q')||{}).value||'').trim(),box=$('#wx-res');
+  if(!qs){toast('지역 이름을 적어 주세요');return}
+  if(box)box.innerHTML='<p class="sub">찾는 중이에요…</p>';
+  let list=[];
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=ko&q='+q(qs));
+    const j=await r.json();
+    if(Array.isArray(j))list=j.map(x=>({name:String(x.name||x.display_name).split(',')[0].trim(),sub:srAddr(x),lat:Number(x.lat),lng:Number(x.lon)}));
+  }catch(e){}
+  if(!list.length&&KK.s===2){
+    const r=await kSearch(qs,{size:5});
+    if(r)list=r.map(x=>({name:x.place_name,sub:x.address_name,lat:Number(x.y),lng:Number(x.x)}));
+  }
+  WXSR=list;
+  if(!box)return;
+  box.innerHTML=list.length?'<div class="rows">'+list.map((x,i)=>'<button type="button" class="nrow row" data-act="wx-pick" data-i="'+i+'"><div class="eb"><div class="et">'+esc(x.name)+'</div><div class="sub">'+esc(x.sub||'')+'</div></div></button>').join('')+'</div>':'<p class="sub">찾지 못했어요. 다른 이름으로 다시 찾아 보세요.</p>';
+}
+async function setWxLoc(loc){
+  if(loc)LS.set('wxcustom',loc);else LS.del('wxcustom');
+  if(mode==='live'&&DB&&S.trip)await guard(()=>DB.doc('trip/main').update(loc?{wxName:loc.name,wxLat:loc.lat,wxLng:loc.lng}:{wxName:null,wxLat:null,wxLng:null}));
+  LS.del('wx');LS.del('wxclim');LS.del('wxloc');
+  WX.s=0;WX.d=null;WX.climate=null;WX.failDest='';
+  scheduleRender();
+  setTimeout(maybeWeather,60);
+}
+function wxHere(){
+  if(!navigator.geolocation){toast('이 기기에서는 위치를 못 가져와요');return}
+  toast('내 위치를 찾는 중이에요…');
+  navigator.geolocation.getCurrentPosition(p=>setWxLoc({name:'내 위치',lat:p.coords.latitude,lng:p.coords.longitude}),e=>toast(e&&e.code===1?'위치 권한이 꺼져 있어요':'위치를 찾지 못했어요'),{timeout:12000,maximumAge:60000});
 }
 function parseShared(t){
   const lines=String(t||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
@@ -997,13 +1095,31 @@ function kSearch(qs,opt){
     }catch(e){res(null)}
   });
 }
-const KG={'가볼 만한 곳':{code:'AT4',kw:'관광명소',kind:'관광'},'맛집':{code:'FD6',kw:'맛집',kind:'맛집'},'카페':{code:'CE7',kw:'카페',kind:'카페'},'숙소':{code:'AD5',kw:'숙소',kind:'기타'}};
+const KG={
+  '가볼 만한 곳':{code:'AT4',kws:['관광명소','가볼만한곳','전망대','사찰','공원','박물관','해변','마을','섬','케이블카'],kind:'관광'},
+  '맛집':{code:'FD6',kws:['맛집','시장 먹거리','노포','해산물','한식','현지 맛집'],kind:'맛집'},
+  '카페':{code:'CE7',kws:['카페','베이커리 카페','오션뷰 카페','디저트'],kind:'카페'},
+  '숙소':{code:'AD5',kws:['숙소','호텔','게스트하우스','리조트','펜션'],kind:'기타'}
+};
 async function kLoadList(tab){
   const dest=(S.trip.dest||'').trim(),key=dest+'|'+tab;
   if(KK.cache[key])return;
   KK.cache[key]={s:1,list:[]};
-  const g=KG[tab],r=await kSearch(dest+' '+g.kw,{category_group_code:g.code,size:15});
-  KK.cache[key]=r===null?{s:-1,list:[]}:{s:2,list:r.slice(0,10)};
+  const g=KG[tab];
+  const arr=await Promise.all(g.kws.map(k=>kSearch(dest+' '+k,{category_group_code:g.code,size:5})));
+  if(arr.every(x=>x===null)){KK.cache[key]={s:-1,list:[]};scheduleRender();return}
+  const seen=new Set(),out=[];
+  for(let i=0;i<5&&out.length<10;i++){
+    for(const list of arr){
+      const r=list&&list[i];
+      if(!r)continue;
+      const id=r.id||r.place_name;
+      if(seen.has(id))continue;
+      seen.add(id);out.push(r);
+      if(out.length>=10)break;
+    }
+  }
+  KK.cache[key]={s:2,list:out};
   scheduleRender();
 }
 function kRow(r,tab,i){
@@ -1049,7 +1165,7 @@ async function addLodgingFromKakao(r){
 function vKakao(){
   const key=kakaoKey(),st=KK.s===2?'연결됨':KK.s===1?'연결하는 중':KK.s===-1?'연결 실패':key?'키 저장됨':'연결 안 됨';
   return '<section class="sec"><div class="sh"><h2>카카오 지도 연결</h2><span class="pill '+(KK.s===2?'ok':KK.s===-1?'need':'mute')+'">'+st+'</span></div><div class="hint">연결하면 홈에 목적지의 가볼 만한 곳, 맛집, 카페, 숙소가 나오고 장소 이름 검색이 정확해져요.'+(KK.s===-1&&KK.msg?'<br><b>'+esc(KK.msg)+'</b>':'')+'</div><div class="field" style="margin-top:12px"><label for="kk-key">카카오 JavaScript 키</label><input id="kk-key" type="password" autocomplete="off" placeholder="'+(key?'저장된 키가 있어요. 바꾸려면 새로 붙여 넣기':'여기에 붙여 넣기')+'"></div><div class="stack"><button type="button" class="btn pri" data-act="save-kakao">저장하고 연결하기</button>'+(key?'<button type="button" class="btn danger" data-act="clear-kakao">연결 끊기</button>':'')+'</div>'
-    +'<details class="how"><summary>키 만드는 법</summary><ol><li>developers.kakao.com 에 카카오 계정으로 로그인해요.</li><li>내 애플리케이션 → 애플리케이션 추가하기로 앱을 하나 만들어요. 이름은 아무거나 괜찮아요.</li><li>앱 설정의 플랫폼에서 <b>Web</b>을 추가하고, 사이트 도메인에 <b>'+esc(location.origin)+'</b>를 넣어요.</li><li>제품 설정에서 <b>카카오맵</b>을 사용 설정으로 켜요.</li><li>앱 키 화면의 <b>JavaScript 키</b>를 복사해서 위 칸에 붙여 넣어요.</li></ol><p class="sub">키는 채팅이나 단톡방에 올리지 말고 이 칸에만 넣어 주세요. 공동 편집 중이면 같이 가는 사람 폰에도 자동으로 적용돼요.</p></details></section>';
+    +'<details class="how"><summary>키 만드는 법</summary><ol><li>developers.kakao.com 에 카카오 계정으로 로그인해요.</li><li>내 애플리케이션 → 애플리케이션 추가하기로 앱을 하나 만들어요. 이름은 아무거나 괜찮아요.</li><li>앱 관리에서 <b>카카오맵</b>을 찾아 <b>사용 설정</b>을 <b>ON</b>으로 켜요.</li><li><b>JavaScript 키</b> 설정에서 <b>JavaScript SDK 도메인</b>에 <b>'+esc(location.origin)+'</b>를 등록해요.</li><li>같은 화면의 <b>JavaScript 키</b>를 복사해서 위 칸에 붙여 넣어요.</li></ol><p class="sub">키는 채팅이나 단톡방에 올리지 말고 이 칸에만 넣어 주세요. 공동 편집 중이면 같이 가는 사람 폰에도 자동으로 적용돼요.</p></details></section>';
 }
 async function saveKakao(){
   const v=(($('#kk-key')||{}).value||'').trim();
@@ -1265,7 +1381,7 @@ let raf=0;
 function scheduleRender(){
   if(raf)return;
   raf=1;
-  const run=()=>{if(!raf)return;raf=0;render();if(ui.sheet&&(ui.sheet.kind==='move'||ui.sheet.kind==='addplace'))sheetRender()};
+  const run=()=>{if(!raf)return;raf=0;render();if(ui.sheet&&(ui.sheet.kind==='move'||ui.sheet.kind==='addplace'||(ui.sheet.kind==='wx'&&!(document.activeElement&&document.activeElement.id==='wx-q'))))sheetRender()};
   requestAnimationFrame(run);
   setTimeout(run,80);
 }
@@ -1480,7 +1596,7 @@ function bulkHTML(){
 function sheetRender(){
   const root=$('#sheet-root'),sh=ui.sheet;
   let h=null;
-  if(sh){h=sh.kind==='move'?moveHTML():sh.kind==='addplace'?apHTML():sh.kind==='bulk'?bulkHTML():sh.kind==='who'?whoHTML():sh.kind==='kadd'?kaddHTML():formHTML()}
+  if(sh){h=sh.kind==='move'?moveHTML():sh.kind==='addplace'?apHTML():sh.kind==='bulk'?bulkHTML():sh.kind==='who'?whoHTML():sh.kind==='kadd'?kaddHTML():sh.kind==='wx'?wxHTML():formHTML()}
   if(!h){ui.sheet=null;root.innerHTML='';document.body.classList.remove('lock');return}
   root.innerHTML=h;document.body.classList.add('lock');
   if(sh&&sh.kind==='booking')syncBooking();
@@ -1534,7 +1650,7 @@ async function saveSheet(){
   }
   busy=true;
   const ok=await guard(async()=>{
-    if(sh.kind==='trip'){await DB.doc('trip/main').update(clean(v));return}
+    if(sh.kind==='trip'){await DB.doc('trip/main').update(clean(v));WX.s=0;WX.d=null;WX.climate=null;WX.failDest='';LS.del('wx');LS.del('wxloc');LS.del('wxclim');return}
     if(sh.kind==='day'){const r=DB.doc('dayNotes/'+sh.id);if(v.note)await r.set({note:v.note});else await r.delete();return}
     if(sh.kind==='place'){const c=parseLL(v.ll);delete v.ll;v.lat=c?c[0]:null;v.lng=c?c[1]:null}
     if(sh.kind==='item'){const old=sh.id?S.items.find(x=>x.id===sh.id):null;if(!old||old.date!==v.date||old.time!==v.time)v.ord=ordAt(v.date,v.time,sh.id)}
@@ -1669,6 +1785,12 @@ document.addEventListener('click',e=>{
     case 'hide':ui.hide=!ui.hide;render();break;
     case 'zoom':ui.zoom=!ui.zoom;render();break;
     case 'locate':locate();break;
+    case 'wx-open':ui.sheet={kind:'wx',obj:{}};sheetRender();maybeClimate();break;
+    case 'wx-search':wxSearch();break;
+    case 'wx-pick':{const x=WXSR[Number(d.i)];if(x)setWxLoc({name:x.name,lat:x.lat,lng:x.lng});break}
+    case 'wx-dest':setWxLoc(null);break;
+    case 'wx-here':wxHere();break;
+    case 'wx-retry':WX.s=0;maybeWeather();break;
     case 'kg':ui.kg=d.v;render();break;
     case 'kmore':ui.kmore=!ui.kmore;render();break;
     case 'k-retry':KK.cache={};render();break;
