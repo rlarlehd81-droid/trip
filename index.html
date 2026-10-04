@@ -327,6 +327,11 @@ html.big .sheet{zoom:1.12}
 /* 꼭 갈 곳 */
 .star{background:none;border:0;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:0 2px;font-family:var(--f-body)}
 .star[aria-pressed="true"]{color:var(--signal)}
+
+/* 날씨 카드 */
+.wxrow{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;padding:10px 0;border-top:1px solid var(--line)}
+.wxrow:first-child{border-top:0}
+.wxd{width:64px;font:14px var(--f-mono);color:var(--muted)}
 </style></head><body>
 <div id="app"></div><div id="sheet-root"></div><div id="toast" role="status" aria-live="polite"></div>
 <script type="application/json" id="trip-data">{"v":1,"trip":{"title":"부산 여행","dest":"부산","start":"2026-11-28","end":"2026-11-29","budget":0,"treasurer":"m1","notice":"","sample":false,"mapNaver":"","mapGoogle":""},"members":[{"id":"m1","name":"멤버1","role":"","phone":"","note":""},{"id":"m2","name":"멤버2","role":"","phone":"","note":""},{"id":"m3","name":"멤버3","role":"","phone":"","note":""},{"id":"m4","name":"멤버4","role":"","phone":"","note":""},{"id":"m5","name":"멤버5","role":"","phone":"","note":""},{"id":"m6","name":"멤버6","role":"","phone":"","note":""}],"dayNotes":{},"items":[{"id":"i1","date":"2026-11-28","time":"","title":"수원역 → 부산역","type":"이동","place":"","ref":"b:b1","note":"","ord":10}],"places":[{"id":"p1","name":"이재모피자","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.0983,"lng":129.0328},{"id":"p2","name":"부평깡통시장","kind":"맛집","area":"부산 중구 부평동","day":"","naver":"","note":"","done":false,"lat":35.1017,"lng":129.0263},{"id":"p3","name":"남포동 족발골목","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.1008,"lng":129.0258},{"id":"p4","name":"감천문화마을","kind":"관광","area":"부산 사하구 감천동","day":"","naver":"","note":"","done":false,"lat":35.0975,"lng":129.0106},{"id":"p5","name":"해운대","kind":"관광","area":"부산 해운대구","day":"","naver":"","note":"","done":false,"lat":35.1587,"lng":129.1604},{"id":"p6","name":"태종대","kind":"관광","area":"부산 영도구","day":"","naver":"","note":"","done":false,"lat":35.0514,"lng":129.087}],"bookings":[{"id":"b1","type":"기차","title":"수원역 → 부산역","date":"2026-11-28","time":"","from":"수원역","to":"부산역","place":"","people":6,"seat":"","code":"","price":0,"status":"예약필요","link":"","note":"6명이 같이 앉을 수 있게 예매하기"}],"lodging":[],"expenses":[],"contribs":[],"pack":[],"info":[]}</script>
@@ -554,14 +559,15 @@ function vHome(){
   let h='<section class="ticket" aria-label="여행 요약"><div class="tk-main"><div class="tk-dest">'+esc(t.dest||'')+'</div><h1>'+esc(t.title)+'</h1><div class="tk-meta">'+md(t.start)+' → '+md(t.end)+'</div><div class="tk-sub">'+(span-1)+'박 '+span+'일 · '+S.members.length+'명</div></div><div class="tk-stub"><span class="tk-small">'+small+'</span><span class="tk-big">'+big+'</span></div></section>';
   if(t.sample&&ui.canEdit&&mode!=='demo')h+='<div class="hint" style="margin-top:14px">지금 보이는 내용은 예시예요. 오른쪽 위 <b>편집</b>을 누르고 <b>더보기</b> 아래쪽 <b>이 폰의 여행 비우고 새로 시작</b>을 누르면 빈 여행이 만들어져요.</div>';
   if(t.notice)h+='<div class="notice" style="margin-top:14px"><b>공지</b>'+nl(t.notice)+'</div>';
+  h+=homeWeather();
   h+=homeWho()+homeNow(inTrip);
+  h+=homeDiscover();
   h+='<section class="sec"><div class="sh"><h2>곧 있는 일정</h2></div><div class="board">';
   h+=ev.length?ev.map(e=>'<div class="brow"><span class="b1">'+esc(e.time)+'</span><span class="b2">'+esc(e.title)+'<small>'+md(e.date)+' · '+esc(e.kind)+'</small></span><span class="b3">'+until(e.at)+'</span></div>').join(''):'<div class="none">예정된 일정이 없어요</div>';
   h+='</div>';
   if(need||wait)h+='<button type="button" class="hint" data-act="tabto" data-t="book" style="width:100%;text-align:left;margin-top:10px;cursor:pointer;color:var(--ink)"><b style="color:var(--warn)">예약 확인이 필요해요</b> '+(need?'예약 전 '+need+'건':'')+(need&&wait?' · ':'')+(wait?'대기 '+wait+'건':'')+'</button>';
   h+='</section>';
   h+='<section class="sec"><div class="sh"><h2>'+(inTrip?'오늘 일정':(TODAY<t.start?'첫날 일정':'마지막 날 일정'))+'</h2><button type="button" class="more" data-act="goday" data-d="'+focus+'">전체 보기</button></div>';
-  h+=wxLine(focus);
   h+=fi.length?'<div class="rows">'+fi.slice(0,6).map(x=>'<div class="row"><span class="mono" style="width:44px;color:var(--muted);font-size:13px">'+esc(x.time||'종일')+'</span><div class="eb"><div class="et">'+esc(x.title)+'</div>'+(x.place?'<div class="sub">'+esc(x.place)+'</div>':'')+'</div></div>').join('')+'</div>':'<div class="empty">이 날 일정이 없어요</div>';
   h+='</section>';
   if(lodge)h+='<section class="sec"><div class="sh"><h2>숙소</h2><button type="button" class="more" data-act="tabto" data-t="book" data-seg="stay">자세히</button></div><div class="tix"><div class="tix-body"><h3 style="margin-top:0">'+esc(lodge.name)+'</h3>'+(lodge.address?'<div class="pl">'+ic('pin',14)+'<span>'+esc(lodge.address)+'</span></div>':'')+'<div class="io"><div><span class="lab">체크인</span><span class="tm">'+esc(lodge.inTime||'--:--')+'</span><span class="dd">'+md(lodge.inDate)+'</span></div><span class="ar">→</span><div><span class="lab">체크아웃</span><span class="tm">'+esc(lodge.outTime||'--:--')+'</span><span class="dd">'+md(lodge.outDate)+'</span></div></div></div></div></section>';
@@ -728,6 +734,7 @@ function locate(){
     {enableHighAccuracy:true,timeout:12000,maximumAge:60000});
 }
 async function geocode(qs){
+  if(KK.s===2){const r=await kSearch(qs,{size:1});if(r&&r[0]){const a=Number(r[0].y),b=Number(r[0].x);if(isFinite(a)&&isFinite(b))return [a,b]}}
   try{
     const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ko&q='+q(qs));
     if(!r.ok)return null;
@@ -838,7 +845,17 @@ const wxLabel=c=>c===0?'맑음':c<=2?'구름 조금':c===3?'흐림':c<=48?'안�
 function wxLoc(){const p=S.places.filter(x=>isNum(x.lat)&&isNum(x.lng));return p.length?{lat:p.reduce((s,x)=>s+x.lat,0)/p.length,lng:p.reduce((s,x)=>s+x.lng,0)/p.length}:null}
 async function maybeWeather(){
   if(WX.s!==0||!S.trip)return;
-  const L=wxLoc();if(!L)return;
+  let L=wxLoc();
+  if(!L){
+    const dest=(S.trip.dest||'').trim();
+    if(!dest||WX.failDest===dest)return;
+    WX.s=1;
+    const cc=LS.get('wxloc',null);
+    if(cc&&cc.dest===dest)L=cc.L;
+    else{const c=await geocode(dest);if(c){L={lat:c[0],lng:c[1]};LS.set('wxloc',{dest,L})}}
+    WX.s=0;
+    if(!L){WX.failDest=dest;scheduleRender();return}
+  }
   const key=L.lat.toFixed(1)+','+L.lng.toFixed(1),c=LS.get('wx',null);
   if(c&&c.key===key&&Date.now()-c.t<36e5){WX.d=c.d;WX.s=2;scheduleRender();return}
   WX.s=1;
@@ -868,6 +885,195 @@ function nearLinks(sel){
 function vShop(){
   const n=S.shop.filter(x=>x.done).length;
   return '<section class="sec"><div class="sh"><h2>살 것</h2>'+(S.shop.length?'<span class="sub mono">'+n+' / '+S.shop.length+' 샀어요</span>':'')+'</div>'+(S.shop.length?'<div class="rows">'+S.shop.map(x=>'<div class="row"><button type="button" class="pkrow" role="checkbox" aria-checked="'+!!x.done+'" data-act="shopdone" data-id="'+x.id+'"><span class="ck">'+ic('check',16)+'</span><span class="pkt"><span>'+esc(x.text)+'</span>'+((x.where||x.who)?'<span class="sub" style="display:block">'+esc([x.where,x.who?mname(x.who):''].filter(Boolean).join(' · '))+'</span>':'')+'</span></button>'+penBtn('shop',x.id)+'</div>').join('')+'</div>':'<div class="empty">사올 것이 없어요</div>')+addBtn('shop','살 것 추가')+'</section>';
+}
+/* ---- 홈 날씨 카드 · 지도 공유 글 붙여넣기 · 이름으로 검색 ---- */
+function homeWeather(){
+  if(!S.trip)return '';
+  const dest=(S.trip.dest||'').trim();
+  if(WX.s===1)return '<section class="sec"><div class="sh"><h2>'+(dest?esc(dest)+' ':'')+'날씨</h2></div><div class="sub">날씨를 불러오는 중이에요…</div></section>';
+  if(WX.s!==2||!WX.d)return '';
+  const w0=WX.d[TODAY];
+  const row=(label,w)=>'<div class="wxrow"><span class="wxd">'+esc(label)+'</span><b>'+esc(wxLabel(w.c))+'</b><span class="mono">'+Math.round(w.lo)+'° / '+Math.round(w.hi)+'°</span><span class="sub">비 '+(w.p==null?'-':w.p)+'%</span>'+(w.p>=50?'<span class="pill wait">우산</span>':'')+'</div>';
+  let h='<section class="sec"><div class="sh"><h2>'+(dest?esc(dest)+' ':'')+'날씨</h2></div><div class="rows" style="padding:2px 14px">';
+  if(w0)h+=row('오늘',w0);
+  tripDays().filter(d=>d!==TODAY&&WX.d[d]).slice(0,4).forEach(d=>{h+=row(md(d),WX.d[d])});
+  const first=tripDays()[0];
+  if(first&&!WX.d[first]&&dn(first)>=dn(TODAY))h+='<div class="sub" style="padding:8px 0">'+md(first)+' 여행 날씨 예보는 '+md(fromDn(dn(first)-15))+'부터 볼 수 있어요.</div>';
+  return h+'</div></section>';
+}
+function parseShared(t){
+  const lines=String(t||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  let url='';const rest=[];
+  lines.forEach(l=>{
+    const m=l.match(/https?:\/\/\S+/);
+    if(m){if(!url)url=m[0];l=l.replace(m[0],'').trim()}
+    l=l.replace(/^\[[^\]]*\]\s*/,'').trim();
+    if(l)rest.push(l);
+  });
+  const name=rest[0]||'';
+  const address=rest.find((l,i)=>i>0&&/(시|도|구|군|동|읍|면|로|길)\s|\d/.test(l))||rest[1]||'';
+  const g=/google|goo\.gl/i.test(url);
+  return {name,address,url,isNaver:/naver/i.test(url),ll:g?parseLL(url):null};
+}
+function applyShared(text){
+  const sh=ui.sheet;if(!sh)return;
+  const p=parseShared(text);
+  if(!p.name&&!p.address)return;
+  const set=(id,v)=>{const el=$(id);if(el&&v)el.value=v};
+  const k=sh.kind;
+  if(k==='lodging'){set('#f-name',p.name);set('#f-address',p.address);if(p.isNaver)set('#f-naver',p.url)}
+  else if(k==='place'){set('#f-name',p.name);set('#f-area',p.address);if(p.isNaver)set('#f-naver',p.url);if(p.ll)set('#f-ll',p.ll[0].toFixed(5)+', '+p.ll[1].toFixed(5))}
+  else if(k==='booking'||k==='item'){set('#f-place',p.name);const t=$('#f-title');if(t&&!t.value&&p.name)t.value=p.name}
+  toast('이름과 주소를 넣었어요. 맞는지 확인해 주세요');
+}
+let SR=[];
+const srAddr=r=>{
+  const parts=String(r.display_name||'').split(', ').map(x=>x.trim()).filter(Boolean).filter(x=>!/^\d{4,6}$/.test(x)&&!/^(대한민국|South Korea)$/.test(x));
+  const nm=r.name||parts[0];
+  return parts.filter(x=>x!==nm).reverse().join(' ');
+};
+async function searchPlace(){
+  const nm=(($('#f-name')||$('#f-place')||{}).value||'').trim(),ad=(($('#f-address')||$('#f-area')||{}).value||'').trim();
+  if(!nm){toast('이름을 먼저 적어 주세요');return}
+  const box=$('#sr');
+  if(box)box.innerHTML='<p class="sub">찾는 중이에요…</p>';
+  let list=[];
+  if(KK.s===2){
+    const r=await kSearch(nm,{size:8});
+    if(r&&r.length)list=r.map(x=>({name:x.place_name,addr:x.road_address_name||x.address_name,lat:Number(x.y),lng:Number(x.x),phone:x.phone||''}));
+  }
+  if(!list.length){
+    const tries=[...new Set([nm,(ad+' '+nm).trim()])];
+    let raw=[];
+    for(let i=0;i<tries.length&&!raw.length;i++){
+      if(i)await new Promise(r=>setTimeout(r,1100));
+      try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=ko&q='+q(tries[i]));const j=await r.json();if(Array.isArray(j))raw=j}catch(e){}
+    }
+    list=raw.map(r=>({name:r.name||String(r.display_name).split(',')[0].trim(),addr:srAddr(r),lat:Number(r.lat),lng:Number(r.lon),phone:''}));
+  }
+  SR=list;
+  if(!box)return;
+  box.innerHTML=SR.length?'<div class="rows">'+SR.map((r,i)=>'<button type="button" class="nrow row" data-act="sr-pick" data-i="'+i+'"><div class="eb"><div class="et">'+esc(r.name)+'</div><div class="sub">'+esc(r.addr)+(r.phone?' · '+esc(r.phone):'')+'</div></div></button>').join('')+'</div>':'<p class="sub">검색 결과가 없어요. 지도 앱에서 공유한 글을 위 칸에 붙여 넣어 보세요.</p>';
+}
+function pickResult(i){
+  const r=SR[i],sh=ui.sheet;
+  if(!r||!sh)return;
+  const set=(id,v)=>{const el=$(id);if(el&&v)el.value=v};
+  if(sh.kind==='lodging'){set('#f-name',r.name);set('#f-address',r.addr);set('#f-phone',r.phone)}
+  else if(sh.kind==='place'){set('#f-name',r.name);set('#f-area',r.addr);set('#f-ll',r.lat.toFixed(5)+', '+r.lng.toFixed(5))}
+  else set('#f-place',r.name);
+  const box=$('#sr');if(box)box.innerHTML='';
+  toast('골랐어요. 맞는지 확인해 주세요');
+}
+
+/* ---- 카카오 지도 연결: 목적지 추천, 정확한 장소 검색 ---- */
+const KK={s:0,cache:{},msg:''};
+const kakaoKey=()=>(S.trip&&S.trip.kakaoKey)||LS.get('kakaoKey','');
+function loadKakao(force){
+  const key=kakaoKey();
+  if(!key||(!force&&KK.s!==0))return;
+  if(window.kakao&&kakao.maps&&kakao.maps.services){KK.s=2;scheduleRender();return}
+  KK.s=1;KK.msg='';
+  const sc=document.createElement('script');
+  sc.src='https://dapi.kakao.com/v2/maps/sdk.js?appkey='+encodeURIComponent(key)+'&libraries=services&autoload=false';
+  sc.onload=()=>{
+    try{kakao.maps.load(()=>{if(kakao.maps.services){KK.s=2}else{KK.s=-1;KK.msg='검색 기능을 불러오지 못했어요'}scheduleRender()})}
+    catch(e){KK.s=-1;KK.msg='키가 올바르지 않거나 사이트 주소가 등록되지 않았어요';scheduleRender()}
+  };
+  sc.onerror=()=>{KK.s=-1;KK.msg='카카오 서버에 연결하지 못했어요. 키와 등록한 사이트 주소를 확인해 주세요';scheduleRender()};
+  document.head.appendChild(sc);
+  setTimeout(()=>{if(KK.s===1){KK.s=-1;KK.msg='연결이 오래 걸려요. 키와 등록한 사이트 주소를 확인해 주세요';scheduleRender()}},9000);
+}
+function kSearch(qs,opt){
+  return new Promise(res=>{
+    if(KK.s!==2||!window.kakao){res(null);return}
+    try{
+      const ps=new kakao.maps.services.Places();
+      ps.keywordSearch(qs,(data,status)=>{
+        if(status===kakao.maps.services.Status.OK)res(data);
+        else if(status===kakao.maps.services.Status.ZERO_RESULT)res([]);
+        else{KK.msg='검색이 거부됐어요. 키, 카카오맵 사용 설정, 등록한 사이트 주소를 확인해 주세요';res(null)}
+      },Object.assign({size:10},opt||{}));
+    }catch(e){res(null)}
+  });
+}
+const KG={'가볼 만한 곳':{code:'AT4',kw:'관광명소',kind:'관광'},'맛집':{code:'FD6',kw:'맛집',kind:'맛집'},'카페':{code:'CE7',kw:'카페',kind:'카페'},'숙소':{code:'AD5',kw:'숙소',kind:'기타'}};
+async function kLoadList(tab){
+  const dest=(S.trip.dest||'').trim(),key=dest+'|'+tab;
+  if(KK.cache[key])return;
+  KK.cache[key]={s:1,list:[]};
+  const g=KG[tab],r=await kSearch(dest+' '+g.kw,{category_group_code:g.code,size:15});
+  KK.cache[key]=r===null?{s:-1,list:[]}:{s:2,list:r.slice(0,10)};
+  scheduleRender();
+}
+function kRow(r,tab,i){
+  const cat=String(r.category_name||'').split(' > ').slice(-1)[0],exists=S.places.some(p=>p.name===r.place_name);
+  return '<div class="row"><div class="eb"><div class="et">'+esc(r.place_name)+(cat?'<span class="tag">'+esc(cat)+'</span>':'')+(exists&&tab!=='숙소'?'<span class="tag">후보에 있음</span>':'')+'</div><div class="sub">'+esc(r.road_address_name||r.address_name||'')+'</div><div class="acts" style="margin-top:6px">'+lk(nmap(r.place_name+' '+(r.address_name||'')),'네이버 후기')+(r.place_url?lk(r.place_url,'카카오맵'):'')+'</div></div><button type="button" class="btn sm pri" data-act="k-add" data-t="'+esc(tab)+'" data-i="'+i+'">'+(tab==='숙소'?'숙소로 추가':'일정에 추가')+'</button></div>';
+}
+function homeDiscover(){
+  if(!S.trip||mode==='snap')return '';
+  const dest=(S.trip.dest||'').trim();
+  if(!dest)return '';
+  const tabs=Object.keys(KG),tab=KG[ui.kg]?ui.kg:tabs[0],demoOn=mode==='demo';
+  let h='<section class="sec"><div class="sh"><h2>'+esc(dest)+' '+esc(tab)+'</h2></div>';
+  if(!kakaoKey()&&!demoOn)return h+'<div class="hint">카카오 지도를 연결하면 여기에 '+esc(dest)+'의 가볼 만한 곳, 맛집, 카페, 숙소가 나오고 바로 일정에 넣을 수 있어요. <button type="button" class="lk" data-act="tabto" data-t="more">연결하러 가기</button></div></section>';
+  h+='<div class="chips" data-k="kg">'+tabs.map(t=>'<button type="button" class="chip" data-act="kg" data-v="'+esc(t)+'" aria-pressed="'+(t===tab)+'">'+esc(t)+'</button>').join('')+'</div>';
+  if(KK.s===0||KK.s===1){loadKakao();return h+'<div class="sub">카카오 지도에 연결하는 중이에요…</div></section>'}
+  if(KK.s===-1)return h+'<div class="hint">'+esc(KK.msg||'카카오 지도에 연결하지 못했어요')+' <button type="button" class="lk" data-act="tabto" data-t="more">설정 보기</button></div></section>';
+  const key=dest+'|'+tab,c=KK.cache[key];
+  if(!c){kLoadList(tab);return h+'<div class="sub">불러오는 중이에요…</div></section>'}
+  if(c.s===1)return h+'<div class="sub">불러오는 중이에요…</div></section>';
+  if(c.s===-1)return h+'<div class="hint">'+esc(KK.msg||'목록을 불러오지 못했어요')+' <button type="button" class="lk" data-act="k-retry">다시 시도</button></div></section>';
+  if(!c.list.length)return h+'<div class="empty">검색 결과가 없어요. 목적지 이름을 더 정확히 적어 보세요.</div></section>';
+  const shown=ui.kmore?c.list:c.list.slice(0,5);
+  return h+'<p class="sub" style="margin:-4px 0 8px">카카오 지도 검색 결과예요. 공식 인기 순위는 아니에요.'+(demoOn?' (연습용 예시)':'')+'</p><div class="rows">'+shown.map((r,i)=>kRow(r,tab,i)).join('')+'</div>'+(c.list.length>5?'<button type="button" class="more" data-act="kmore" style="margin-top:6px">'+(ui.kmore?'접기':'10개 모두 보기')+'</button>':'')+'</section>';
+}
+function kaddHTML(){
+  const dest=(S.trip.dest||'').trim(),c=KK.cache[dest+'|'+ui.sheet.tab],r=c&&c.list[ui.sheet.i];
+  if(!r)return null;
+  return '<div class="scrim" data-act="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="일정에 추가"><div class="sheet-h"><h2>'+esc(r.place_name)+'</h2>'+xBtn+'</div><p class="sub" style="margin-bottom:12px">'+esc(r.road_address_name||r.address_name||'')+'</p><div class="mvg"><span class="lab">어느 날에 넣을까요? 그날 일정 맨 끝에 들어가요.</span><div class="mvr">'+tripDays().map((d,k)=>'<button type="button" class="chip" data-act="k-day" data-d="'+d+'">'+(k+1)+'일차 '+md(d)+'</button>').join('')+'</div></div><div class="mvr" style="margin-top:12px"><button type="button" class="btn" data-act="k-day" data-d="">날짜는 나중에 (후보로만 저장)</button></div></div></div>';
+}
+async function addKakaoPlace(r,tab,d){
+  const kind=KG[tab].kind,lat=Number(r.y),lng=Number(r.x),ex=S.places.find(p=>p.name===r.place_name);
+  const ok=await guard(async()=>{
+    if(!ex)await W.put('places',{id:uid(),name:r.place_name,kind,area:r.road_address_name||r.address_name||'',day:d||'',naver:'',note:'',done:false,lat,lng,must:false,phone:r.phone||'',kurl:r.place_url||''});
+    else if(d)await W.upd('places',ex.id,{day:d});
+    if(d)await W.put('items',{id:uid(),date:d,time:'',title:r.place_name,type:TYPE_OF[kind]||'관광',place:r.place_name,ref:'',note:'',ord:nextOrd(d)});
+  });
+  if(ok){if(ui.sheet)closeSheet();if(d)ui.day=d;toast(d?dayNo(d)+'일차 일정에 넣었어요':'후보 장소에 저장했어요')}
+}
+async function addLodgingFromKakao(r){
+  const ok=await guard(()=>W.put('lodging',{id:uid(),name:r.place_name,address:r.road_address_name||r.address_name||'',naver:'',inDate:S.trip.start,inTime:'15:00',outDate:S.trip.end,outTime:'11:00',room:'',price:0,code:'',phone:r.phone||'',note:''}));
+  if(ok)toast('숙소에 넣었어요. 예약 탭 → 숙소에서 날짜와 예약번호를 고쳐 주세요');
+}
+function vKakao(){
+  const key=kakaoKey(),st=KK.s===2?'연결됨':KK.s===1?'연결하는 중':KK.s===-1?'연결 실패':key?'키 저장됨':'연결 안 됨';
+  return '<section class="sec"><div class="sh"><h2>카카오 지도 연결</h2><span class="pill '+(KK.s===2?'ok':KK.s===-1?'need':'mute')+'">'+st+'</span></div><div class="hint">연결하면 홈에 목적지의 가볼 만한 곳, 맛집, 카페, 숙소가 나오고 장소 이름 검색이 정확해져요.'+(KK.s===-1&&KK.msg?'<br><b>'+esc(KK.msg)+'</b>':'')+'</div><div class="field" style="margin-top:12px"><label for="kk-key">카카오 JavaScript 키</label><input id="kk-key" type="password" autocomplete="off" placeholder="'+(key?'저장된 키가 있어요. 바꾸려면 새로 붙여 넣기':'여기에 붙여 넣기')+'"></div><div class="stack"><button type="button" class="btn pri" data-act="save-kakao">저장하고 연결하기</button>'+(key?'<button type="button" class="btn danger" data-act="clear-kakao">연결 끊기</button>':'')+'</div>'
+    +'<details class="how"><summary>키 만드는 법</summary><ol><li>developers.kakao.com 에 카카오 계정으로 로그인해요.</li><li>내 애플리케이션 → 애플리케이션 추가하기로 앱을 하나 만들어요. 이름은 아무거나 괜찮아요.</li><li>앱 설정의 플랫폼에서 <b>Web</b>을 추가하고, 사이트 도메인에 <b>'+esc(location.origin)+'</b>를 넣어요.</li><li>제품 설정에서 <b>카카오맵</b>을 사용 설정으로 켜요.</li><li>앱 키 화면의 <b>JavaScript 키</b>를 복사해서 위 칸에 붙여 넣어요.</li></ol><p class="sub">키는 채팅이나 단톡방에 올리지 말고 이 칸에만 넣어 주세요. 공동 편집 중이면 같이 가는 사람 폰에도 자동으로 적용돼요.</p></details></section>';
+}
+async function saveKakao(){
+  const v=(($('#kk-key')||{}).value||'').trim();
+  if(!v){toast('키를 붙여 넣어 주세요');return}
+  LS.set('kakaoKey',v);
+  if(mode==='live'&&DB&&S.trip)await guard(()=>DB.doc('trip/main').update({kakaoKey:v}));
+  KK.cache={};KK.msg='';
+  if(window.kakao&&kakao.maps&&kakao.maps.services){toast('저장했어요. 새로고침하면 새 키가 적용돼요');render();return}
+  KK.s=0;loadKakao(true);
+  toast('저장했어요. 연결하는 중이에요…');render();
+}
+async function clearKakao(){
+  LS.del('kakaoKey');
+  if(mode==='live'&&DB&&S.trip)await guard(()=>DB.doc('trip/main').update({kakaoKey:null}));
+  KK.s=0;KK.cache={};render();toast('연결을 끊었어요. 새로고침하면 완전히 꺼져요');
+}
+function demoKakao(){
+  const A=(n,a,x,y,cat)=>({place_name:n,address_name:a,road_address_name:'',x:String(x),y:String(y),phone:'',category_name:cat,place_url:''});
+  return {
+    '부산|가볼 만한 곳':{s:2,list:[A('해동용궁사','부산 기장군',129.2233,35.1883,'여행 > 관광,명소 > 사찰'),A('흰여울문화마을','부산 영도구',129.0449,35.0788,'여행 > 관광,명소 > 문화마을'),A('송도해상케이블카','부산 서구',129.0170,35.0764,'여행 > 관광,명소 > 케이블카'),A('광안리해수욕장','부산 수영구',129.1186,35.1532,'여행 > 관광,명소 > 해수욕장'),A('오륙도 스카이워크','부산 남구',129.1233,35.1006,'여행 > 관광,명소 > 전망대'),A('부산타워','부산 중구',129.0323,35.1006,'여행 > 관광,명소 > 전망대'),A('동백섬','부산 해운대구',129.1527,35.1566,'여행 > 관광,명소 > 공원')]},
+    '부산|맛집':{s:2,list:[A('자갈치시장','부산 중구',129.0305,35.0966,'음식점 > 시장'),A('국제시장','부산 중구',129.0292,35.1000,'음식점 > 시장'),A('BIFF광장 씨앗호떡','부산 중구',129.0286,35.0983,'음식점 > 간식')]},
+    '부산|카페':{s:2,list:[]},
+    '부산|숙소':{s:2,list:[]}
+  };
 }
 const nearList=(ref,pts)=>pts.filter(p=>p.id!==ref.id).map(p=>({p,km:hav(ref,p)})).sort((a,b)=>a.km-b.km).slice(0,6);
 function vMap(){
@@ -1025,6 +1231,7 @@ function vMore(){
   h+='<section class="sec"><div class="sh"><h2>메모 · 링크</h2></div>'+(S.info.length?'<div class="rows">'+S.info.map(n=>'<div class="row"><div class="eb"><div class="et">'+esc(n.label)+'</div><div class="sub">'+esc(n.value)+'</div></div>'+(safe(n.url)?lk(safe(n.url),'열기'):'')+penBtn('info',n.id)+'</div>').join('')+'</div>':'<div class="empty">메모가 없어요</div>')+addBtn('info','메모 추가')+(ui.edit?'<button type="button" class="add" data-act="preset-info">'+ic('plus',16)+'해외 긴급 연락처 한 번에 추가</button>':'')+'</section>';
   h+=vLive();
   h+='<section class="sec"><div class="sh"><h2>공유</h2></div><div class="stack"><button type="button" class="btn" data-act="copyshare">카톡에 붙여넣을 일정 요약 복사</button><button type="button" class="btn" data-act="bigtext">글씨 크게 보기 켜고 끄기</button><button type="button" class="btn" data-act="copysnap">지금 화면을 링크로 보내기 (읽기 전용)</button></div></section>';
+  h+=vKakao();
   if(ui.edit)h+='<section class="sec"><div class="sh"><h2>여행 설정</h2></div><div class="stack"><button type="button" class="btn" data-act="edit" data-k="trip" data-id="">여행 이름 · 날짜 · 예산 · 공지 · 지도 링크 수정</button>'+(mode==='local'?'<button type="button" class="btn danger" data-act="reset-sample">'+(armed==='reset'?'한 번 더 누르면 이 폰의 내용이 모두 지워져요':'이 폰의 여행 비우고 새로 시작')+'</button>':'')+'</div></section>';
   if(mode!=='demo')h+='<section class="sec"><div class="stack"><button type="button" class="btn" data-act="demo">연습용 예시 화면 보기 (저장 안 돼요)</button></div></section>';
   return h;
@@ -1117,10 +1324,12 @@ const FORM={
     {k:'time',l:'시간 (없으면 비워 두기)',t:'time'},
     {k:'title',l:'할 일',t:'text',req:1},
     {k:'type',l:'종류',t:'sel',o:TYPES},
+    {t:'paste',l:'지도 앱에서 공유한 글 붙여넣기 (장소가 자동으로 들어가요)'},
     {k:'place',l:'장소 (지도 검색어로 써요)',t:'text'},
     {k:'ref',l:'연결할 예약 · 숙소',t:'sel',o:()=>[['','연결 없음'],...S.bookings.map(b=>['b:'+b.id,'예약 · '+b.title]),...S.lodging.map(l=>['l:'+l.id,'숙소 · '+l.name])]},
     {k:'note',l:'메모',t:'area'}]},
   place:{t:'갈 곳',f:[
+    {t:'paste',l:'지도 앱에서 공유한 글 붙여넣기 (이름·주소가 자동으로 들어가요)'},
     {k:'name',l:'이름',t:'text',req:1},
     {k:'kind',l:'종류',t:'sel',o:KINDS},
     {k:'area',l:'위치 · 주소 (지도 검색에 함께 써요)',t:'text'},
@@ -1138,6 +1347,7 @@ const FORM={
     {k:'trainKind',l:'열차 종류',t:'sel',o:TRAINS},
     {k:'from',l:'출발지',t:'pick'},
     {k:'to',l:'도착지',t:'pick'},
+    {t:'paste',l:'지도 앱에서 공유한 글 붙여넣기 (장소가 자동으로 들어가요)'},
     {k:'place',l:'장소 (관광지 · 식당)',t:'text'},
     {k:'people',l:'인원',t:'num'},
     {k:'seat',l:'좌석 · 정보',t:'text'},
@@ -1147,6 +1357,7 @@ const FORM={
     {k:'note',l:'메모',t:'area'},
     {k:'addItem',l:'일정에도 같이 넣기',t:'check',newOnly:1}]},
   lodging:{t:'숙소',f:[
+    {t:'paste',l:'지도 앱에서 공유한 글 붙여넣기 (이름·주소가 자동으로 들어가요)'},
     {k:'name',l:'숙소 이름',t:'text',req:1},
     {k:'address',l:'주소',t:'text'},
     {k:'naver',l:'네이버 플레이스 링크 (선택)',t:'url'},
@@ -1206,6 +1417,7 @@ function optsOf(f){
 }
 function fieldHTML(f,val){
   if(f.t==='info')return '<div class="hint" style="margin-bottom:14px">'+esc(f.l)+'</div>';
+  if(f.t==='paste')return '<div class="field" id="w-paste"><label for="f-paste">'+esc(f.l)+'</label><textarea id="f-paste" rows="2" placeholder="네이버·구글 지도 앱에서 공유 → 복사한 글을 여기에 붙여 넣으세요"></textarea><button type="button" class="btn sm" style="align-self:flex-start" data-act="srch-place">이름으로 검색해서 고르기</button><div id="sr"></div></div>';
   const id='f-'+f.k,v=val==null?'':val,kind=ui.sheet?ui.sheet.kind:'';
   if(f.t==='check')return '<div class="field" id="w-'+f.k+'"><label class="chk"><input type="checkbox" id="'+id+'"'+((val==null?f.def!==false:!!val)?' checked':'')+'><span>'+esc(f.l)+'</span></label></div>';
   let inp;
@@ -1234,6 +1446,7 @@ function syncBooking(){
     sel.innerHTML=list?'<option value="">'+(t==='항공'?'공항을 골라요':'역을 골라요')+'</option>'+list.map(g=>'<optgroup label="'+esc(g[0])+'">'+g[1].map(n=>'<option'+(n===inp.value?' selected':'')+'>'+esc(n)+'</option>').join('')+'</optgroup>').join(''):'';
   });
   const wp=$('#w-place');if(wp)wp.hidden=tr;
+  const wpa=$('#w-paste');if(wpa&&t)wpa.hidden=tr;
   const wk=$('#w-trainKind');if(wk)wk.hidden=t!=='기차';
 }
 function fabFor(){
@@ -1267,7 +1480,7 @@ function bulkHTML(){
 function sheetRender(){
   const root=$('#sheet-root'),sh=ui.sheet;
   let h=null;
-  if(sh){h=sh.kind==='move'?moveHTML():sh.kind==='addplace'?apHTML():sh.kind==='bulk'?bulkHTML():sh.kind==='who'?whoHTML():formHTML()}
+  if(sh){h=sh.kind==='move'?moveHTML():sh.kind==='addplace'?apHTML():sh.kind==='bulk'?bulkHTML():sh.kind==='who'?whoHTML():sh.kind==='kadd'?kaddHTML():formHTML()}
   if(!h){ui.sheet=null;root.innerHTML='';document.body.classList.remove('lock');return}
   root.innerHTML=h;document.body.classList.add('lock');
   if(sh&&sh.kind==='booking')syncBooking();
@@ -1289,7 +1502,7 @@ function closeSheet(){ui.sheet=null;armed=null;sheetRender()}
 function readForm(F){
   const out={};
   for(const f of F.f){
-    if(f.t==='info')continue;
+    if(f.t==='info'||f.t==='paste')continue;
     if(f.t==='check'){const c=$('#f-'+f.k);out[f.k]=!!(c&&c.checked);continue}
     const el=$('#f-'+f.k);let v;
     if(f.t==='members'){v=$$('input:checked',el).map(i=>i.value);if(v.length===S.members.length)v=[]}
@@ -1456,6 +1669,15 @@ document.addEventListener('click',e=>{
     case 'hide':ui.hide=!ui.hide;render();break;
     case 'zoom':ui.zoom=!ui.zoom;render();break;
     case 'locate':locate();break;
+    case 'kg':ui.kg=d.v;render();break;
+    case 'kmore':ui.kmore=!ui.kmore;render();break;
+    case 'k-retry':KK.cache={};render();break;
+    case 'k-add':{const dest=(S.trip.dest||'').trim(),c=KK.cache[dest+'|'+d.t],r=c&&c.list[Number(d.i)];if(r){if(d.t==='숙소')addLodgingFromKakao(r);else{ui.sheet={kind:'kadd',tab:d.t,i:Number(d.i),obj:{}};sheetRender()}}break}
+    case 'k-day':{const sh=ui.sheet;if(!sh)break;const dest=(S.trip.dest||'').trim(),c=KK.cache[dest+'|'+sh.tab],r=c&&c.list[sh.i];if(r)addKakaoPlace(r,sh.tab,d.d);break}
+    case 'save-kakao':saveKakao();break;
+    case 'clear-kakao':clearKakao();break;
+    case 'srch-place':searchPlace();break;
+    case 'sr-pick':pickResult(Number(d.i));break;
     case 'must':{const p=S.places.find(x=>x.id===d.id);if(p)guard(()=>W.upd('places',p.id,{must:!p.must}));break}
     case 'mustonly':ui.mustOnly=!ui.mustOnly;render();break;
     case 'shopdone':{const x=S.shop.find(y=>y.id===d.id);if(x)guard(()=>W.upd('shop',x.id,{done:!x.done}));break}
@@ -1507,6 +1729,7 @@ document.addEventListener('submit',e=>{
   else if(e.target.id==='bulk-form')saveBulk();
 });
 document.addEventListener('input',e=>{
+  if(e.target.id==='f-paste'){applyShared(e.target.value);return}
   if(e.target.id==='srch'){ui.srch=e.target.value;const s=ui.srch.trim()||(S.trip&&S.trip.dest)||'';const n=$('#s-n'),g=$('#s-g');if(n)n.href=nmap(s);if(g)g.href=gmap(s)}
 });
 document.addEventListener('change',e=>{
@@ -1522,7 +1745,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- 실시간 연결 ---------- */
 function subscribe(){
   const need=COLS.length+2,got=new Set();
-  const ok=k=>{got.add(k);if(got.size>=need){ui.loading=false;setTimeout(maybeWeather,400)}scheduleRender()};
+  const ok=k=>{got.add(k);if(got.size>=need){ui.loading=false;setTimeout(()=>{maybeWeather();loadKakao()},400)}scheduleRender()};
   const err=e=>{console.error(e);toast('불러오지 못한 내용이 있어요. 새로고침해 주세요')};
   unsubs.push(DB.doc('trip/main').onSnapshot(s=>{S.trip=s.exists?Object.assign({},s.data()):null;ok('trip')},err));
   unsubs.push(DB.collection('dayNotes').onSnapshot(s=>{const m={};s.docs.forEach(x=>{m[x.id]=(x.data()||{}).note||''});S.dayNotes=m;ok('dayNotes')},err));
@@ -1659,9 +1882,10 @@ async function decodeSnap(t){
   STORE_KEYS.forEach(k=>{if(d[k]&&typeof d[k]==='object')st[k]=d[k]});
   return st;
 }
+const stripKey=st=>{const c=JSON.parse(JSON.stringify(st));if(c.trip&&c.trip.main)delete c.trip.main.kakaoKey;return c};
 function currentStore(){return LIVE?LIVE.store:(LS.get('data',null)||storeFromEmb())}
 async function copySnap(){
-  try{const t=await encodeSnap(currentStore());copyText(location.origin+location.pathname+'#s='+t)}catch(e){toast('링크를 만들지 못했어요')}
+  try{const t=await encodeSnap(stripKey(currentStore()));copyText(location.origin+location.pathname+'#s='+t)}catch(e){toast('링크를 만들지 못했어요')}
 }
 function importSnap(){
   if(!SNAP)return;
@@ -1696,6 +1920,7 @@ function startDemo(){
   STORE_KEYS.forEach(k=>{if(!st[k])st[k]={}});
   DB=makeDB(st,async()=>{});
   mode='demo';ui.canEdit=true;ui.err='';ui.edit=false;ui.tab='home';ui.day=null;
+  KK.s=2;KK.cache=demoKakao();
   S=emptyState();ui.loading=true;render();subscribe();
 }
 
