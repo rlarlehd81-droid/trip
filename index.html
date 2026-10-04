@@ -306,6 +306,27 @@ button.lk{cursor:pointer;font-family:inherit}
 .lmap.nolabel .lpl{display:none}
 .leaflet-control-attribution{font-size:10px}
 .leaflet-attribution-flag{display:none!important}
+
+/* 편한 입력 */
+.fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:28;display:inline-flex;align-items:center;gap:6px;padding:13px 18px;border:0;border-radius:99px;background:var(--accent);color:var(--on-accent);font:16px var(--f-body);box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer}
+.dchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip.sm{padding:6px 10px;font-size:12px}
+.chk{display:flex;align-items:center;gap:10px;font:16px var(--f-body);color:var(--ink);padding:6px 0}
+.chk input{width:22px;height:22px;min-height:0;flex:none}
+.pickSel{margin-bottom:6px}
+.sheet-f{position:sticky;bottom:calc(-1 * (16px + env(safe-area-inset-bottom,0px)));background:var(--surface);padding:10px 0 6px;margin-top:6px;border-top:1px solid var(--line)}
+
+/* 모두 함께 */
+.idc{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;color:transparent;padding:0;cursor:pointer;flex:none}
+.idc[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.stop.done h3{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.wx{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:0 0 14px;font-size:14px}
+html.big main{zoom:1.18}
+html.big .sheet{zoom:1.12}
+
+/* 꼭 갈 곳 */
+.star{background:none;border:0;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:0 2px;font-family:var(--f-body)}
+.star[aria-pressed="true"]{color:var(--signal)}
 </style></head><body>
 <div id="app"></div><div id="sheet-root"></div><div id="toast" role="status" aria-live="polite"></div>
 <script type="application/json" id="trip-data">{"v":1,"trip":{"title":"부산 여행","dest":"부산","start":"2026-11-28","end":"2026-11-29","budget":0,"treasurer":"m1","notice":"","sample":false,"mapNaver":"","mapGoogle":""},"members":[{"id":"m1","name":"멤버1","role":"","phone":"","note":""},{"id":"m2","name":"멤버2","role":"","phone":"","note":""},{"id":"m3","name":"멤버3","role":"","phone":"","note":""},{"id":"m4","name":"멤버4","role":"","phone":"","note":""},{"id":"m5","name":"멤버5","role":"","phone":"","note":""},{"id":"m6","name":"멤버6","role":"","phone":"","note":""}],"dayNotes":{},"items":[{"id":"i1","date":"2026-11-28","time":"","title":"수원역 → 부산역","type":"이동","place":"","ref":"b:b1","note":"","ord":10}],"places":[{"id":"p1","name":"이재모피자","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.0983,"lng":129.0328},{"id":"p2","name":"부평깡통시장","kind":"맛집","area":"부산 중구 부평동","day":"","naver":"","note":"","done":false,"lat":35.1017,"lng":129.0263},{"id":"p3","name":"남포동 족발골목","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.1008,"lng":129.0258},{"id":"p4","name":"감천문화마을","kind":"관광","area":"부산 사하구 감천동","day":"","naver":"","note":"","done":false,"lat":35.0975,"lng":129.0106},{"id":"p5","name":"해운대","kind":"관광","area":"부산 해운대구","day":"","naver":"","note":"","done":false,"lat":35.1587,"lng":129.1604},{"id":"p6","name":"태종대","kind":"관광","area":"부산 영도구","day":"","naver":"","note":"","done":false,"lat":35.0514,"lng":129.087}],"bookings":[{"id":"b1","type":"기차","title":"수원역 → 부산역","date":"2026-11-28","time":"","from":"수원역","to":"부산역","place":"","people":6,"seat":"","code":"","price":0,"status":"예약필요","link":"","note":"6명이 같이 앉을 수 있게 예매하기"}],"lodging":[],"expenses":[],"contribs":[],"pack":[],"info":[]}</script>
@@ -327,11 +348,12 @@ const sum=(a,f)=>a.reduce((s,x)=>s+(Number(f?f(x):x)||0),0);
 const safe=u=>{u=String(u||'').trim();return /^https?:\/\//i.test(u)?u:''};
 const isNum=v=>typeof v==='number'&&isFinite(v);
 const clean=o=>JSON.parse(JSON.stringify(o));
+let LSP='trip:';
 const mem={};
 const LS={
-  get(k,d){try{const v=localStorage.getItem('trip:'+k);if(v!=null)return JSON.parse(v)}catch(e){}return k in mem?mem[k]:d},
-  set(k,v){mem[k]=v;try{localStorage.setItem('trip:'+k,JSON.stringify(v))}catch(e){}},
-  del(k){delete mem[k];try{localStorage.removeItem('trip:'+k)}catch(e){}}
+  get(k,d){try{const v=localStorage.getItem(LSP+k);if(v!=null)return JSON.parse(v)}catch(e){}return (LSP+k) in mem?mem[LSP+k]:d},
+  set(k,v){mem[LSP+k]=v;try{localStorage.setItem(LSP+k,JSON.stringify(v))}catch(e){}},
+  del(k){delete mem[LSP+k];try{localStorage.removeItem(LSP+k)}catch(e){}}
 };
 
 /* ---------- 날짜 · 거리 ---------- */
@@ -372,8 +394,28 @@ const CATS=['교통','식비','숙소','관광·입장','쇼핑','기타'];
 const BTYPES=['기차','버스','항공','렌터카','관광지','식당','기타'];
 const TRANSPORT=['기차','버스','항공','렌터카'];
 const BSTAT=['확정','대기','예약필요','취소'];
+const STATIONS=[
+ ['자주 가는 역',['서울','용산','수원','대전','동대구','부산','강릉','광주송정','목포','여수EXPO','울산(통도사)','신경주','청량리','수서','행신','광명','천안아산']],
+ ['서울·수도권',['서울','용산','영등포','청량리','수서','행신','광명','수원','병점','오산','평택','지제','동탄','안양','상봉','양평','가평','춘천']],
+ ['충청·대전',['천안아산','천안','조치원','오송','대전','서대전','공주','논산','제천','단양']],
+ ['호남',['익산','전주','정읍','장성','광주송정','나주','목포','남원','곡성','구례구','순천','여수EXPO']],
+ ['대구·경북',['김천(구미)','동대구','대구','영천','경주','신경주','포항','안동','영주']],
+ ['부산·울산·경남',['울산(통도사)','태화강','밀양','구포','부산','부전','해운대','송정','기장','물금','창원중앙','창원','마산','진주']],
+ ['강원',['원주','만종','횡성','둔내','평창','진부(오대산)','강릉','정동진','동해','삼척']]
+];
+const AIRPORTS=[
+ ['국내 공항',['김포 (GMP)','인천 (ICN)','김해 부산 (PUS)','제주 (CJU)','대구 (TAE)','청주 (CJJ)','광주 (KWJ)','무안 (MWX)','여수 (RSU)','울산 (USN)','포항경주 (KPX)','사천 (HIN)','양양 (YNY)']],
+ ['일본',['나리타 (NRT)','하네다 (HND)','간사이 (KIX)','후쿠오카 (FUK)','신치토세 삿포로 (CTS)','나하 오키나와 (OKA)']],
+ ['동남아·중화권',['타오위안 대만 (TPE)','홍콩 (HKG)','상하이 푸둥 (PVG)','베이징 서우두 (PEK)','방콕 수완나품 (BKK)','다낭 (DAD)','하노이 (HAN)','호치민 (SGN)','싱가포르 창이 (SIN)','쿠알라룸푸르 (KUL)','마닐라 (MNL)','세부 (CEB)','발리 (DPS)']],
+ ['미주·유럽·대양주',['괌 (GUM)','로스앤젤레스 (LAX)','뉴욕 JFK (JFK)','파리 샤를드골 (CDG)','런던 히스로 (LHR)','시드니 (SYD)']]
+];
+const LISTS={'기차':STATIONS,'항공':AIRPORTS};
+const TRAINS=[['','선택 안 함'],'KTX','KTX-이음','SRT','ITX-새마을','ITX-마음','ITX-청춘','무궁화호','누리로','기타'];
+const CURRENCIES=[['','해외여행이 아니에요'],['JPY','JPY · 일본 엔'],['USD','USD · 미국 달러'],['EUR','EUR · 유로'],['CNY','CNY · 중국 위안'],['TWD','TWD · 대만 달러'],['HKD','HKD · 홍콩 달러'],['THB','THB · 태국 바트'],['VND','VND · 베트남 동'],['PHP','PHP · 필리핀 페소'],['SGD','SGD · 싱가포르 달러'],['MYR','MYR · 말레이시아 링깃'],['IDR','IDR · 인도네시아 루피아'],['GBP','GBP · 영국 파운드'],['AUD','AUD · 호주 달러'],['CAD','CAD · 캐나다 달러'],['CHF','CHF · 스위스 프랑'],['TRY','TRY · 튀르키예 리라'],['CZK','CZK · 체코 코루나']];
+const ROLES=['총무','운전','사진','길잡이','회계','맛집 담당'];
 const BGROUPS=[['전체',null],['교통',TRANSPORT],['관광지',['관광지']],['식당',['식당']],['기타',['기타']]];
-const COLS=['members','items','places','bookings','lodging','expenses','contribs','pack','info'];
+const COLS=['members','items','places','bookings','lodging','expenses','contribs','pack','info','shop'];
+const DEMO={"trip":{"main":{"title":"부산 여행 (연습용)","dest":"부산","start":"{D0}","end":"{D1}","budget":1200000,"treasurer":"m1","notice":"연습용 예시 화면이에요. 실제 일정이 아니고 이름·금액도 모두 예시예요.","sample":true,"mapNaver":"","mapGoogle":"","fxCode":"","fxRate":0}},"dayNotes":{"{D0}":{"note":"부산 도착, 남포동 먹거리"},"{D1}":{"note":"해운대와 태종대"}},"members":{"m1":{"name":"민수","role":"총무","phone":"","note":""},"m2":{"name":"지은","role":"길잡이","phone":"","note":""},"m3":{"name":"현우","role":"사진","phone":"","note":""},"m4":{"name":"서윤","role":"","phone":"","note":""},"m5":{"name":"도현","role":"","phone":"","note":""},"m6":{"name":"하린","role":"","phone":"","note":""}},"items":{"i1":{"date":"{D0}","time":"07:50","title":"수원역 집합","type":"이동","place":"수원역","ref":"","note":"","ord":10,"done":true},"i2":{"date":"{D0}","time":"08:20","title":"KTX 수원 → 부산","type":"이동","place":"","ref":"b:b1","note":"","ord":20,"done":true},"i3":{"date":"{D0}","time":"10:50","title":"부산역 도착, 짐 맡기기","type":"이동","place":"부산역","ref":"","note":"","ord":30,"done":true},"i4":{"date":"{D0}","time":"11:30","title":"이재모피자 점심","type":"식사","place":"이재모피자","ref":"b:b3","note":"","ord":40},"i5":{"date":"{D0}","time":"13:30","title":"부평깡통시장 구경","type":"식사","place":"부평깡통시장","ref":"","note":"","ord":50},"i6":{"date":"{D0}","time":"15:00","title":"감천문화마을","type":"관광","place":"감천문화마을","ref":"","note":"","ord":60},"i7":{"date":"{D0}","time":"17:30","title":"숙소 체크인","type":"숙소","place":"","ref":"l:l1","note":"","ord":70},"i8":{"date":"{D0}","time":"19:00","title":"광안리 야경과 회","type":"식사","place":"광안리해수욕장","ref":"b:b4","note":"","ord":80},"i9":{"date":"{D1}","time":"09:30","title":"체크아웃","type":"숙소","place":"","ref":"l:l1","note":"","ord":10},"i10":{"date":"{D1}","time":"10:30","title":"해운대 산책","type":"관광","place":"해운대","ref":"","note":"","ord":20},"i11":{"date":"{D1}","time":"13:00","title":"점심","type":"식사","place":"","ref":"","note":"식당은 현장에서 고르기","ord":30},"i12":{"date":"{D1}","time":"14:30","title":"태종대","type":"관광","place":"태종대","ref":"","note":"","ord":40},"i13":{"date":"{D1}","time":"17:40","title":"KTX 부산 → 수원","type":"이동","place":"","ref":"b:b2","note":"","ord":50}},"places":{"p1":{"name":"이재모피자","kind":"맛집","area":"부산 중구","day":"{D0}","naver":"","note":"","done":false,"lat":35.0983,"lng":129.0328,"must":true,"votes":["m1","m2","m3","m5"]},"p2":{"name":"부평깡통시장","kind":"맛집","area":"부산 중구 부평동","day":"{D0}","naver":"","note":"","done":false,"lat":35.1017,"lng":129.0263,"votes":["m2","m4"]},"p3":{"name":"남포동 족발골목","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.1008,"lng":129.0258,"votes":["m1"]},"p4":{"name":"감천문화마을","kind":"관광","area":"부산 사하구 감천동","day":"{D0}","naver":"","note":"","done":false,"lat":35.0975,"lng":129.0106,"must":true,"votes":["m1","m2","m3","m4","m5","m6"]},"p5":{"name":"해운대","kind":"관광","area":"부산 해운대구","day":"{D1}","naver":"","note":"","done":false,"lat":35.1587,"lng":129.1604,"votes":["m3","m6"]},"p6":{"name":"태종대","kind":"관광","area":"부산 영도구","day":"{D1}","naver":"","note":"","done":false,"lat":35.0514,"lng":129.087,"votes":["m2"]},"p7":{"name":"광안리해수욕장","kind":"관광","area":"부산 수영구","day":"{D0}","naver":"","note":"","done":false,"lat":35.1532,"lng":129.1186,"must":true,"votes":["m1","m2","m4"]},"p8":{"name":"흰여울문화마을","kind":"관광","area":"부산 영도구","day":"","naver":"","note":"","done":false,"lat":35.0788,"lng":129.0449,"votes":["m2","m5"]},"p9":{"name":"송도해상케이블카","kind":"관광","area":"부산 서구","day":"","naver":"","note":"","done":false,"lat":35.0764,"lng":129.017,"votes":["m4","m6"]},"p10":{"name":"해동용궁사","kind":"관광","area":"부산 기장군","day":"","naver":"","note":"","done":false,"lat":35.1883,"lng":129.2233,"votes":["m3"]},"p11":{"name":"자갈치시장","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.0966,"lng":129.0305},"p12":{"name":"BIFF광장 씨앗호떡","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.0983,"lng":129.0286,"votes":["m1","m4","m6"]}},"bookings":{"b1":{"from":"수원","to":"부산","place":"","seat":"4호차 3A~3F (예시)","code":"예시-0001","price":358800,"link":"","note":"","trainKind":"KTX","type":"기차","title":"KTX 수원 → 부산","date":"{D0}","time":"08:20","people":6,"status":"확정"},"b2":{"from":"부산","to":"수원","place":"","seat":"6호차 5A~5F (예시)","code":"예시-0002","price":358800,"link":"","note":"","trainKind":"KTX","type":"기차","title":"KTX 부산 → 수원","date":"{D1}","time":"17:40","people":6,"status":"확정"},"b3":{"from":"","to":"","place":"이재모피자","seat":"","code":"","price":0,"link":"","note":"웨이팅이 길 수 있어요","trainKind":"","type":"식당","title":"이재모피자 (예시)","date":"{D0}","time":"11:30","people":6,"status":"확정"},"b4":{"from":"","to":"","place":"광안리해수욕장","seat":"","code":"","price":0,"link":"","note":"","trainKind":"","type":"식당","title":"광안리 횟집 (예시)","date":"{D0}","time":"19:00","people":6,"status":"예약필요"}},"lodging":{"l1":{"name":"광안리 오션스테이 (예시)","address":"부산 수영구 광안해변로 (예시 주소)","naver":"","inDate":"{D0}","inTime":"15:00","outDate":"{D1}","outTime":"11:00","room":"온돌 3실 · 6명","price":420000,"code":"예시-A1","phone":"051-000-0000","note":"주차 2대 · 조식 미포함"}},"expenses":{"e1":{"split":[],"note":"","local":0,"cur":"","date":"{DM8}","title":"KTX 수원 → 부산 (6인)","cat":"교통","amount":358800,"payer":"pool"},"e2":{"split":[],"note":"","local":0,"cur":"","date":"{DM8}","title":"KTX 부산 → 수원 (6인)","cat":"교통","amount":358800,"payer":"pool"},"e3":{"split":[],"note":"","local":0,"cur":"","date":"{DM6}","title":"숙소 1박","cat":"숙소","amount":420000,"payer":"pool"},"e4":{"split":[],"note":"지은이 먼저 냈어요","local":0,"cur":"","date":"{D0}","title":"이재모피자 점심","cat":"식비","amount":98000,"payer":"m2"},"e5":{"split":["m3","m4"],"note":"","local":0,"cur":"","date":"{D0}","title":"씨앗호떡·간식","cat":"식비","amount":12500,"payer":"m3"}},"contribs":{"c1":{"member":"m1","amount":200000,"date":"{DM9}","note":""},"c2":{"member":"m2","amount":200000,"date":"{DM9}","note":""},"c3":{"member":"m3","amount":200000,"date":"{DM9}","note":""},"c4":{"member":"m4","amount":200000,"date":"{DM9}","note":""},"c5":{"member":"m5","amount":200000,"date":"{DM9}","note":""},"c6":{"member":"m6","amount":200000,"date":"{DM9}","note":""}},"pack":{"k1":{"group":"꼭 챙기기","text":"신분증"},"k2":{"group":"꼭 챙기기","text":"모바일 승차권"},"k3":{"group":"꼭 챙기기","text":"보조배터리"},"k4":{"group":"옷·세면","text":"겉옷 (바닷바람)"},"k5":{"group":"옷·세면","text":"편한 신발"},"k6":{"group":"같이 쓸 것","text":"돗자리"}},"info":{"n1":{"label":"응급","value":"119 · 112","url":""},"n2":{"label":"부산 날씨","value":"출발 전날 한 번 더 확인","url":"https://search.naver.com/search.naver?query=%EB%B6%80%EC%82%B0+%EB%82%A0%EC%94%A8"}},"shop":{"s1":{"text":"부산 어묵 세트","where":"부평깡통시장","who":"m2","done":false,"note":""},"s2":{"text":"씨앗호떡 (간식)","where":"BIFF광장","who":"m4","done":true,"note":""},"s3":{"text":"건어물 선물","where":"자갈치시장","who":"","done":false,"note":""},"s4":{"text":"엽서·기념품","where":"감천문화마을","who":"m6","done":false,"note":""}}};
 const EMB=$('#trip-data').textContent;
 const emptyState=()=>{const s={trip:null,dayNotes:{}};COLS.forEach(c=>{s[c]=[]});return s};
 function fromEmb(){
@@ -510,14 +552,16 @@ function vHome(){
   const lodge=S.lodging.slice().sort((a,z)=>(a.inDate||'').localeCompare(z.inDate||'')).find(l=>(l.outDate||'')>=TODAY)||S.lodging[0];
   const done=LS.get('pack',{}),pk=S.pack.filter(p=>done[p.id]).length;
   let h='<section class="ticket" aria-label="여행 요약"><div class="tk-main"><div class="tk-dest">'+esc(t.dest||'')+'</div><h1>'+esc(t.title)+'</h1><div class="tk-meta">'+md(t.start)+' → '+md(t.end)+'</div><div class="tk-sub">'+(span-1)+'박 '+span+'일 · '+S.members.length+'명</div></div><div class="tk-stub"><span class="tk-small">'+small+'</span><span class="tk-big">'+big+'</span></div></section>';
-  if(t.sample&&ui.canEdit)h+='<div class="hint" style="margin-top:14px">지금 보이는 내용은 예시예요. 오른쪽 위 <b>편집</b>을 누르고 <b>더보기</b>에서 <b>예시 지우고 새로 시작</b>을 누르면 빈 여행이 만들어져요.</div>';
+  if(t.sample&&ui.canEdit&&mode!=='demo')h+='<div class="hint" style="margin-top:14px">지금 보이는 내용은 예시예요. 오른쪽 위 <b>편집</b>을 누르고 <b>더보기</b> 아래쪽 <b>이 폰의 여행 비우고 새로 시작</b>을 누르면 빈 여행이 만들어져요.</div>';
   if(t.notice)h+='<div class="notice" style="margin-top:14px"><b>공지</b>'+nl(t.notice)+'</div>';
+  h+=homeWho()+homeNow(inTrip);
   h+='<section class="sec"><div class="sh"><h2>곧 있는 일정</h2></div><div class="board">';
   h+=ev.length?ev.map(e=>'<div class="brow"><span class="b1">'+esc(e.time)+'</span><span class="b2">'+esc(e.title)+'<small>'+md(e.date)+' · '+esc(e.kind)+'</small></span><span class="b3">'+until(e.at)+'</span></div>').join(''):'<div class="none">예정된 일정이 없어요</div>';
   h+='</div>';
   if(need||wait)h+='<button type="button" class="hint" data-act="tabto" data-t="book" style="width:100%;text-align:left;margin-top:10px;cursor:pointer;color:var(--ink)"><b style="color:var(--warn)">예약 확인이 필요해요</b> '+(need?'예약 전 '+need+'건':'')+(need&&wait?' · ':'')+(wait?'대기 '+wait+'건':'')+'</button>';
   h+='</section>';
   h+='<section class="sec"><div class="sh"><h2>'+(inTrip?'오늘 일정':(TODAY<t.start?'첫날 일정':'마지막 날 일정'))+'</h2><button type="button" class="more" data-act="goday" data-d="'+focus+'">전체 보기</button></div>';
+  h+=wxLine(focus);
   h+=fi.length?'<div class="rows">'+fi.slice(0,6).map(x=>'<div class="row"><span class="mono" style="width:44px;color:var(--muted);font-size:13px">'+esc(x.time||'종일')+'</span><div class="eb"><div class="et">'+esc(x.title)+'</div>'+(x.place?'<div class="sub">'+esc(x.place)+'</div>':'')+'</div></div>').join('')+'</div>':'<div class="empty">이 날 일정이 없어요</div>';
   h+='</section>';
   if(lodge)h+='<section class="sec"><div class="sh"><h2>숙소</h2><button type="button" class="more" data-act="tabto" data-t="book" data-seg="stay">자세히</button></div><div class="tix"><div class="tix-body"><h3 style="margin-top:0">'+esc(lodge.name)+'</h3>'+(lodge.address?'<div class="pl">'+ic('pin',14)+'<span>'+esc(lodge.address)+'</span></div>':'')+'<div class="io"><div><span class="lab">체크인</span><span class="tm">'+esc(lodge.inTime||'--:--')+'</span><span class="dd">'+md(lodge.inDate)+'</span></div><span class="ar">→</span><div><span class="lab">체크아웃</span><span class="tm">'+esc(lodge.outTime||'--:--')+'</span><span class="dd">'+md(lodge.outDate)+'</span></div></div></div></div></section>';
@@ -536,7 +580,7 @@ function stop(x,i,arr){
   if(x.skip)badge='<span class="pill off">건너뜀</span>';
   else if(r&&r.k==='b')badge='<span class="pill '+pc(r.o.status)+'">'+esc(r.o.status)+'</span>';
   else if(r&&r.k==='l')badge='<span class="pill ok">숙소 예약</span>';
-  return '<li class="stop'+(x.skip?' skip':'')+'"><div class="st">'+esc(x.time||'종일')+'</div><div class="rl"></div><div class="sb"><div class="s1"><span class="tag">'+esc(x.type)+'</span>'+badge+moveBtn(x.id)+'</div><h3>'+esc(x.title)+'</h3>'+(x.place?'<div class="pl">'+ic('pin',14)+'<span>'+esc(x.place)+'</span></div><div class="acts">'+dirLinks(pl0,false)+(nx&&isNum(pl0.lat)?lk(legUrl(pl0,nx),'다음 장소까지'):'')+mapLinks(x.place)+'</div>':'')+(x.note?'<p class="nt">'+nl(x.note)+'</p>':'')+'</div></li>';
+  return '<li class="stop'+(x.skip?' skip':'')+(x.done?' done':'')+'"><div class="st">'+esc(x.time||'종일')+'</div><div class="rl"></div><div class="sb"><div class="s1"><button type="button" class="idc" role="checkbox" aria-checked="'+!!x.done+'" aria-label="완료" data-act="idone" data-id="'+x.id+'">'+ic('check',13)+'</button><span class="tag">'+esc(x.type)+'</span>'+badge+moveBtn(x.id)+'</div><h3>'+esc(x.title)+'</h3>'+(x.place?'<div class="pl">'+ic('pin',14)+'<span>'+esc(x.place)+'</span></div><div class="acts">'+dirLinks(pl0,false)+(nx&&isNum(pl0.lat)?lk(legUrl(pl0,nx),'다음 장소까지'):'')+mapLinks(x.place)+'</div>':'')+(x.note?'<p class="nt">'+nl(x.note)+'</p>':'')+'</div></li>';
 }
 function vPlan(){
   const days=tripDays();
@@ -545,6 +589,7 @@ function vPlan(){
   const pl=items.filter(x=>!x.skip).map(x=>x.place).filter(Boolean).filter((p,i,a)=>p!==a[i-1]);
   let h='<div class="chips" data-k="days">'+days.map((x,i)=>'<button type="button" class="chip" data-act="day" data-d="'+x+'" aria-pressed="'+(x===d)+'"><span class="cdot" style="--c:var(--l'+(i%6+1)+')"></span>'+(i+1)+'일차 <b>'+md(x)+'</b></button>').join('')+'</div>';
   h+='<div class="daynote"><h2>'+esc(S.dayNotes[d]||(di+1)+'일차')+'</h2>'+(ui.edit?'<button type="button" class="penb" data-act="edit" data-k="day" data-id="'+d+'">'+ic('edit',14)+'제목</button>':'')+'</div>';
+  h+=wxLine(d);
   h+=items.length?'<ol class="route" style="--dc:var(--l'+(di%6+1)+')">'+items.map(stop).join('')+'</ol>':'<div class="empty">이 날 일정이 아직 없어요</div>';
   if(pl.length>=2)h+='<div class="acts" style="margin-top:6px">'+lk(gdir(pl),ic('route',14)+'이 날 동선 구글지도로 보기','btn sm')+'</div>';
   h+=addBtn('item','일정 추가');
@@ -563,18 +608,19 @@ function vPlan(){
 /* ---------- 화면: 장소 (목록 · 지도) ---------- */
 function placeRow(p,done){
   const direct=safe(p.naver),on=!!p.done;
-  return '<div class="row place'+(on?' done':'')+'"><button type="button" class="ck" role="checkbox" aria-checked="'+on+'" aria-label="'+esc(p.name)+' 다녀옴" data-act="chk" data-id="'+p.id+'">'+ic('check',16)+'</button><div class="pb"><div class="pt"><strong>'+esc(p.name)+'</strong><span class="tag">'+esc(p.kind)+'</span>'+(p.day?'<span class="tag">'+dayNo(p.day)+'일차</span>':'<span class="tag off">미정</span>')+penBtn('place',p.id)+'</div>'+(p.area?'<div class="sub">'+esc(p.area)+'</div>':'')+(p.note?'<p class="nt">'+nl(p.note)+'</p>':'')+'<div class="acts">'+dirLinks(p,false)+lk(direct||nmap(p.name+(p.area?' '+p.area:'')),'네이버 플레이스',direct?'lk pri':'lk')+lk(gmap(p.name+(p.area?' '+p.area:'')),'구글지도')+(ui.edit?'<button type="button" class="lk" data-act="addplace" data-id="'+p.id+'">일정에 넣기</button>':'')+'</div></div></div>';
+  return '<div class="row place'+(on?' done':'')+'"><button type="button" class="ck" role="checkbox" aria-checked="'+on+'" aria-label="'+esc(p.name)+' 다녀옴" data-act="chk" data-id="'+p.id+'">'+ic('check',16)+'</button><div class="pb"><div class="pt"><button type="button" class="star" aria-pressed="'+!!p.must+'" aria-label="꼭 갈 곳" data-act="must" data-id="'+p.id+'">'+(p.must?'★':'☆')+'</button><strong>'+esc(p.name)+'</strong><span class="tag">'+esc(p.kind)+'</span>'+(p.day?'<span class="tag">'+dayNo(p.day)+'일차</span>':'<span class="tag off">미정</span>')+penBtn('place',p.id)+'</div>'+(p.area?'<div class="sub">'+esc(p.area)+'</div>':'')+(p.note?'<p class="nt">'+nl(p.note)+'</p>':'')+'<div class="acts">'+voteBtn(p)+dirLinks(p,false)+lk(direct||nmap(p.name+(p.area?' '+p.area:'')),'네이버 플레이스',direct?'lk pri':'lk')+lk(gmap(p.name+(p.area?' '+p.area:'')),'구글지도')+(ui.edit?'<button type="button" class="lk" data-act="addplace" data-id="'+p.id+'">일정에 넣기</button>':'')+'</div></div></div>';
 }
 function vPlaces(){
   let h='<div class="seg" role="group" aria-label="보기"><button type="button" data-act="pseg" data-v="list" aria-pressed="'+(ui.pseg==='list')+'">목록</button><button type="button" data-act="pseg" data-v="map" aria-pressed="'+(ui.pseg==='map')+'">지도</button></div>';
   if(ui.pseg==='map')return h+vMap();
-  const list=S.places.filter(p=>ui.kind==='전체'||p.kind===ui.kind).filter(p=>!(ui.hide&&p.done));
+  const list=S.places.filter(p=>ui.kind==='전체'||p.kind===ui.kind).filter(p=>!(ui.hide&&p.done)).filter(p=>!(ui.mustOnly&&!p.must));
+  if(ui.sortVote)list.sort((a,b)=>votesOf(b).length-votesOf(a).length);
   const n=S.places.filter(p=>p.done).length;
   const s=(ui.srch||'').trim()||S.trip.dest||'';
-  h+='<form class="srch" role="search"><input id="srch" type="search" placeholder="맛집·명소 이름으로 찾기" aria-label="장소 검색" value="'+esc(ui.srch)+'">'+lk(nmap(s),'네이버','btn sm" id="s-n')+lk(gmap(s),'구글','btn sm" id="s-g')+'</form>';
+  h+='<form class="srch" role="search"><input id="srch" type="search" placeholder="맛집·명소 이름으로 찾기" aria-label="장소 검색" value="'+esc(ui.srch)+'">'+lk(nmap(s),'네이버','btn sm" id="s-n')+lk(gmap(s),'구글','btn sm" id="s-g')+'</form>'+destLinks();
   h+=chips('kinds',['전체',...KINDS],ui.kind,'kind');
   h+='<div class="prog"><div class="bar-t"><i style="width:'+(S.places.length?Math.round(n/S.places.length*100):0)+'%"></i></div><span>'+n+' / '+S.places.length+'곳 다녀옴</span></div>';
-  h+='<div class="acts" style="margin:-4px 0 12px"><button type="button" class="chip" data-act="hide" aria-pressed="'+ui.hide+'">가본 곳 숨기기</button></div>';
+  h+='<div class="acts" style="margin:-4px 0 12px"><button type="button" class="chip" data-act="hide" aria-pressed="'+ui.hide+'">가본 곳 숨기기</button><button type="button" class="chip" data-act="sortvote" aria-pressed="'+!!ui.sortVote+'">투표 많은 순</button><button type="button" class="chip" data-act="mustonly" aria-pressed="'+!!ui.mustOnly+'">꼭 갈 곳만</button></div>';
   h+=list.length?'<div class="rows">'+list.map(placeRow).join('')+'</div>':'<div class="empty">'+(S.places.length?'조건에 맞는 곳이 없어요':'가고 싶은 곳을 추가해 보세요')+'</div>';
   h+=addBtn('place','갈 곳 추가');
   if(ui.edit)h+='<button type="button" class="add" data-act="bulk">'+ic('plus',16)+'여러 곳 한 번에 추가</button><p class="sub" style="margin-top:10px">체크는 같이 가는 모두에게 보여요. 네이버지도 앱에서 장소 공유 → 링크 복사를 한 뒤 수정 화면의 네이버 플레이스 칸에 붙여 넣으면 그 장소 페이지로 바로 열려요.</p>';
@@ -740,6 +786,89 @@ function dirLinks(p,full){
   return lk(gmapDir(p),'길찾기 (구글)','lk pri');
 }
 const legUrl=(a,b)=>inKorea(b)?naverDir(b,'transit',a):gmapDir(b,a);
+
+/* ---- 나 · 투표 · 완료 체크 · 날씨 · 큰 글씨 ---- */
+const myId=()=>{const v=LS.get('me',null);return S.members.some(m=>m.id===v)?v:null};
+const lastPayer=()=>{const p=LS.get('lastPayer','pool');return p==='pool'||S.members.some(m=>m.id===p)?p:'pool'};
+const votesOf=p=>Array.isArray(p.votes)?p.votes:Object.values(p.votes||{});
+function applyBig(){document.documentElement.classList.toggle('big',!!LS.get('big',false))}
+function homeWho(){
+  if(mode==='snap'||myId()||S.members.length<2)return '';
+  return '<section class="sec"><div class="sh"><h2>나는 누구예요?</h2></div><div class="chips" style="margin-bottom:4px">'+S.members.map(m=>'<button type="button" class="chip" data-act="iam" data-id="'+m.id+'">'+esc(m.name)+'</button>').join('')+'</div><p class="sub">고르면 내 정산과 투표를 바로 볼 수 있어요. 이 폰에만 기억해요.</p></section>';
+}
+function homeNow(inTrip){
+  if(!inTrip)return '';
+  const list=itemsOf(TODAY).filter(x=>!x.skip),left=list.filter(x=>!x.done);
+  if(!list.length)return '';
+  let h='<section class="sec"><div class="sh"><h2>지금 할 일</h2><span class="sub mono">'+(list.length-left.length)+' / '+list.length+' 완료</span></div>';
+  const nx=left[0];
+  if(!nx)return h+'<div class="empty">오늘 일정을 모두 마쳤어요</div></section>';
+  const pl=placeOf(nx.place),n2=left[1];
+  return h+'<div class="tix"><div class="tix-body"><div class="s1"><span class="tag">'+esc(nx.type)+'</span><span class="mono" style="color:var(--muted)">'+esc(nx.time||'종일')+'</span></div><h3>'+esc(nx.title)+'</h3>'+(nx.place?'<div class="pl">'+ic('pin',14)+'<span>'+esc(nx.place)+'</span></div>':'')+'<div class="acts">'+dirLinks(pl,false)+(nx.place?mapLinks(nx.place):'')+'<button type="button" class="lk pri" data-act="idone" data-id="'+nx.id+'">완료했어요</button></div></div>'+(n2?'<div class="tix-foot"><span class="sub">이어서 '+esc(n2.time||'')+' '+esc(n2.title)+'</span></div>':'')+'</div></section>';
+}
+function mySettle(c){
+  const id=myId();if(!id)return '';
+  const v=Math.round(c.net[id]||0),mine=c.tr.filter(t=>t.from===id||t.to===id);
+  return '<section class="sec"><div class="sh"><h2>내 정산 ('+esc(mname(id))+')</h2></div><div class="bal"><span class="lab">'+(v>0?'받을 돈':v<0?'보낼 돈':'정산할 금액')+'</span><div class="num'+(v<0?' neg':'')+'">'+num(Math.abs(v))+'<small>원</small></div><div class="stat3"><div><span class="lab">낸 돈</span><b>'+num(c.paid[id]+c.contrib[id])+'</b></div><div><span class="lab">내 몫</span><b>'+num(c.share[id])+'</b></div><div><span class="lab">차액</span><b>'+(v>0?'+':v<0?'−':'')+num(Math.abs(v))+'</b></div></div>'+(mine.length?'<div style="margin-top:12px;border-top:1px solid var(--line)">'+mine.map(t=>'<div class="tf"><span>'+esc(mname(t.from))+'</span><span class="ar">→</span><span>'+esc(mname(t.to))+'</span><span class="amt">'+num(t.amt)+'<small>원</small></span></div>').join('')+'</div>':'')+'</div></section>';
+}
+function settleText(){
+  const c=calc(),L=['[정산] '+S.trip.title];
+  S.members.forEach(m=>{const v=Math.round(c.net[m.id]||0);L.push('· '+m.name+': 낸 돈 '+num(c.paid[m.id]+c.contrib[m.id])+'원, 내 몫 '+num(c.share[m.id])+'원 → '+(v>0?'받을 돈 '+num(v)+'원':v<0?'보낼 돈 '+num(-v)+'원':'정산 없음'))});
+  if(c.tr.length){L.push('','[보낼 곳]');c.tr.forEach(t=>L.push('· '+mname(t.from)+' → '+mname(t.to)+' '+num(t.amt)+'원'))}
+  L.push('','남은 공금 '+num(c.pool)+'원은 '+mname(c.tre)+'님이 보관 중이에요');
+  return L.join('\n');
+}
+function voteBtn(p){
+  const v=votesOf(p),me=myId(),on=!!(me&&v.includes(me));
+  return '<button type="button" class="lk'+(on?' pri':'')+'" aria-pressed="'+on+'" data-act="vote" data-id="'+p.id+'">가고 싶어요 '+v.length+'</button>'+(v.length?'<span class="sub" style="align-self:center">'+esc(v.map(mname).join(', '))+'</span>':'');
+}
+async function doVote(id){
+  const p=S.places.find(x=>x.id===id);if(!p)return;
+  const me=myId();
+  if(!me){ui.sheet={kind:'who',pending:id,obj:{}};sheetRender();return}
+  const v=votesOf(p).slice(),i=v.indexOf(me);
+  if(i>=0)v.splice(i,1);else v.push(me);
+  await guard(()=>W.upd('places',id,{votes:v}));
+}
+function whoHTML(){
+  return '<div class="scrim" data-act="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="나는 누구예요"><div class="sheet-h"><h2>나는 누구예요?</h2>'+xBtn+'</div><p class="sub" style="margin-bottom:12px">이 폰에 기억해 두고 투표와 정산에 써요.</p><div class="mvr">'+S.members.map(m=>'<button type="button" class="chip" data-act="iam" data-id="'+m.id+'">'+esc(m.name)+'</button>').join('')+'</div></div></div>';
+}
+const WX={s:0,d:null};
+const wxLabel=c=>c===0?'맑음':c<=2?'구름 조금':c===3?'흐림':c<=48?'안개':c<=57?'이슬비':c<=67?'비':c<=77?'눈':c<=82?'소나기':c<=86?'눈 소나기':'뇌우';
+function wxLoc(){const p=S.places.filter(x=>isNum(x.lat)&&isNum(x.lng));return p.length?{lat:p.reduce((s,x)=>s+x.lat,0)/p.length,lng:p.reduce((s,x)=>s+x.lng,0)/p.length}:null}
+async function maybeWeather(){
+  if(WX.s!==0||!S.trip)return;
+  const L=wxLoc();if(!L)return;
+  const key=L.lat.toFixed(1)+','+L.lng.toFixed(1),c=LS.get('wx',null);
+  if(c&&c.key===key&&Date.now()-c.t<36e5){WX.d=c.d;WX.s=2;scheduleRender();return}
+  WX.s=1;
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+L.lat.toFixed(3)+'&longitude='+L.lng.toFixed(3)+'&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16');
+    const j=await r.json(),d={};
+    (j.daily.time||[]).forEach((t,i)=>{d[t]={c:j.daily.weather_code[i],hi:j.daily.temperature_2m_max[i],lo:j.daily.temperature_2m_min[i],p:j.daily.precipitation_probability_max[i]}});
+    WX.d=d;WX.s=2;LS.set('wx',{key,t:Date.now(),d});
+  }catch(e){WX.s=-1}
+  scheduleRender();
+}
+function wxLine(day){
+  const w=WX.s===2&&WX.d&&WX.d[day];
+  if(!w)return '';
+  return '<div class="wx"><b>'+esc(wxLabel(w.c))+'</b><span class="mono">'+Math.round(w.lo)+'° / '+Math.round(w.hi)+'°</span>'+(w.p!=null?'<span>비 올 확률 '+w.p+'%</span>':'')+(w.p>=50?'<span class="pill wait">우산 챙기세요</span>':'')+'</div>';
+}
+function destLinks(){
+  const d=(S.trip.dest||'').trim();
+  if(!d)return '';
+  const f=S.trip.fxCode?gmap:nmap;
+  return '<div class="acts" style="margin:-4px 0 12px"><span class="sub" style="align-self:center">'+esc(d)+' 추천 찾기</span>'+['가볼만한 곳','맛집','카페','쇼핑·기념품'].map(k=>lk(f(d+' '+k),k)).join('')+'</div>';
+}
+function nearLinks(sel){
+  const f=inKorea(sel)?nmap:gmap;
+  return ['맛집','카페','볼거리','편의점','약국','주차장'].map(k=>lk(f(sel.name+' 근처 '+k),'근처 '+k)).join('');
+}
+function vShop(){
+  const n=S.shop.filter(x=>x.done).length;
+  return '<section class="sec"><div class="sh"><h2>살 것</h2>'+(S.shop.length?'<span class="sub mono">'+n+' / '+S.shop.length+' 샀어요</span>':'')+'</div>'+(S.shop.length?'<div class="rows">'+S.shop.map(x=>'<div class="row"><button type="button" class="pkrow" role="checkbox" aria-checked="'+!!x.done+'" data-act="shopdone" data-id="'+x.id+'"><span class="ck">'+ic('check',16)+'</span><span class="pkt"><span>'+esc(x.text)+'</span>'+((x.where||x.who)?'<span class="sub" style="display:block">'+esc([x.where,x.who?mname(x.who):''].filter(Boolean).join(' · '))+'</span>':'')+'</span></button>'+penBtn('shop',x.id)+'</div>').join('')+'</div>':'<div class="empty">사올 것이 없어요</div>')+addBtn('shop','살 것 추가')+'</section>';
+}
 const nearList=(ref,pts)=>pts.filter(p=>p.id!==ref.id).map(p=>({p,km:hav(ref,p)})).sort((a,b)=>a.km-b.km).slice(0,6);
 function vMap(){
   const pts=S.places.filter(p=>isNum(p.lat)&&isNum(p.lng));
@@ -758,7 +887,7 @@ function vMap(){
       h+='<section class="sec"><div class="sh"><h2>'+(sel?esc(sel.name)+' 근처':'내 위치 근처')+'</h2></div>';
       if(sel){
         const s=(sel.name+(sel.area?' '+sel.area:'')).trim();
-        h+='<div class="acts" style="margin:0 0 10px">'+dirLinks(sel,true)+lk(nmap(s),'네이버지도')+lk(gmap(s),'구글지도')+lk(nmap(sel.name+' 근처 맛집'),'근처 맛집')+lk(nmap(sel.name+' 근처 카페'),'근처 카페')+(ui.edit?'<button type="button" class="lk" data-act="addplace" data-id="'+sel.id+'">일정에 넣기</button>':'')+'</div>';
+        h+='<div class="acts" style="margin:0 0 10px">'+dirLinks(sel,true)+lk(nmap(s),'네이버지도')+lk(gmap(s),'구글지도')+nearLinks(sel)+(ui.edit?'<button type="button" class="lk" data-act="addplace" data-id="'+sel.id+'">일정에 넣기</button>':'')+'</div>';
       }
       h+=near.length?'<div class="rows">'+near.map(n=>'<button type="button" class="nrow row" data-act="pin" data-id="'+n.p.id+'"><div class="eb"><div class="et">'+esc(n.p.name)+'<span class="tag">'+esc(n.p.kind)+'</span>'+(n.p.day?'<span class="tag">'+dayNo(n.p.day)+'일차</span>':'')+(n.p.done?'<span class="tag">다녀옴</span>':'')+'</div></div><span class="amt">'+fmtKm(n.km).replace(/(km|m)$/,'<small>$1</small>')+'</span></button>').join('')+'</div><p class="sub" style="margin-top:6px">직선거리예요. 실제 길은 지도 앱에서 확인해 주세요.</p>':'<div class="empty">다른 장소가 없어요</div>';
       h+='</section>';
@@ -779,7 +908,7 @@ function memberRow(m,i){
   if(exp&&end){if(exp<end)warn='<span class="pill need">여권 만료</span>';else if(exp<addMonths(end,6))warn='<span class="pill wait">여권 6개월 미만</span>'}
   const docs=[['영문 이름',m.nameEn],['생년월일',m.birth],['여권번호',m.passportNo],['여권 만료일',exp],['비자·전자입국',m.visa],['비상 연락처',m.emergency],['혈액형·알레르기·약',m.health],['여행자 보험',m.insurance]].filter(x=>x[1]);
   const det=docs.length?'<details class="how"><summary>여권·서류 보기</summary><dl class="kv">'+docs.map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+' <button type="button" class="lk" data-act="copy" data-v="'+esc(x[1])+'">복사</button></dd></div>').join('')+'</dl></details>':'';
-  return '<div class="row" style="flex-wrap:wrap">'+av(m,i)+'<div class="eb"><div class="et">'+esc(m.name)+(m.role?'<span class="tag">'+esc(m.role)+'</span>':'')+warn+'</div>'+(m.phone?'<div class="sub mono">'+esc(m.phone)+'</div>':'')+(m.note?'<div class="nt">'+nl(m.note)+'</div>':'')+'</div>'+(m.phone?'<button type="button" class="btn sm" data-act="copy" data-v="'+esc(m.phone)+'">복사</button>':'')+penBtn('member',m.id)+(det?'<div style="flex-basis:100%">'+det+'</div>':'')+'</div>';
+  return '<div class="row" style="flex-wrap:wrap">'+av(m,i)+'<div class="eb"><div class="et">'+esc(m.name)+(m.id===myId()?'<span class="pill ok">나</span>':'')+(m.role?'<span class="tag">'+esc(m.role)+'</span>':'')+warn+'</div>'+(m.phone?'<div class="sub mono">'+esc(m.phone)+'</div>':'')+(m.note?'<div class="nt">'+nl(m.note)+'</div>':'')+'</div>'+(m.phone?'<button type="button" class="btn sm" data-act="copy" data-v="'+esc(m.phone)+'">복사</button>':'')+(m.id!==myId()&&mode!=='snap'?'<button type="button" class="lk" data-act="iam" data-id="'+m.id+'">나예요</button>':'')+penBtn('member',m.id)+(det?'<div style="flex-basis:100%">'+det+'</div>':'')+'</div>';
 }
 const PACK_OVERSEAS=['여권 (만료일이 6개월 이상 남았는지)','비자 · 전자입국신고 (ESTA 등)','항공권 · 숙소 바우처 캡처','환전한 현금 · 해외결제 카드','여행자 보험 가입','유심 · eSIM · 로밍','멀티 어댑터 (돼지코)','보조배터리 (기내 반입)','상비약 · 처방전','세면도구 (기내 액체 100ml 이하)'];
 async function presetPack(){
@@ -860,7 +989,8 @@ function vMoney(){
   let h='<div class="bal"><span class="lab">공금 잔액 (걷은 회비 − 공금으로 쓴 돈)</span><div class="num'+(c.pool<0?' neg':'')+'">'+num(c.pool)+'<small>원</small></div>';
   if(b>0)h+='<div class="bar-t'+(c.total>b?' over':'')+'"><i style="width:'+Math.min(100,Math.round(c.total/b*100))+'%"></i></div><div class="cap"><span>전체 지출 '+Math.round(c.total/b*100)+'%</span><span>예산 '+won(b)+'</span></div>';
   h+='<div class="stat3"><div><span class="lab">걷은 회비</span><b>'+num(c.C)+'</b></div><div><span class="lab">전체 지출</span><b>'+num(c.total)+'</b></div><div><span class="lab">1인당 지출</span><b>'+num(c.total/n)+'</b></div></div>'+(S.trip.fxCode&&S.trip.fxRate?'<div class="cap" style="margin-top:10px"><span>환율 1 '+esc(S.trip.fxCode)+' = '+esc(S.trip.fxRate)+'원</span></div>':'')+'</div>';
-  h+='<section class="sec"><div class="sh"><h2>정산</h2></div><div class="rows">'+S.members.map((m,i)=>{const v=Math.round(c.net[m.id]||0);return '<div class="row">'+av(m,i)+'<div class="eb"><div class="et">'+esc(m.name)+(m.id===c.tre?'<span class="tag">공금 보관</span>':'')+'</div><div class="sub">낸 돈 '+num(c.paid[m.id]+c.contrib[m.id])+' · 내 몫 '+num(c.share[m.id])+'</div></div><div class="amt '+(v>0?'pos':v<0?'neg':'')+'">'+(v>0?'+':v<0?'−':'')+num(Math.abs(v))+'<small>'+(v>0?'받을 돈':v<0?'보낼 돈':'')+'</small></div></div>'}).join('')+(c.tr.length?c.tr.map(t=>'<div class="tf"><span>'+esc(mname(t.from))+'</span><span class="ar">→</span><span>'+esc(mname(t.to))+'</span><span class="amt">'+num(t.amt)+'<small>원</small></span></div>').join(''):'<div class="tf sub">정산할 금액이 없어요</div>')+'</div><p class="sub" style="margin-top:8px">남은 공금은 총무가 들고 있다고 보고 계산해요. 여행이 끝난 뒤 위 순서대로 보내면 정산이 끝나요.</p></section>';
+  h+=mySettle(c);
+  h+='<section class="sec"><div class="sh"><h2>정산</h2><button type="button" class="more" data-act="copysettle">카톡용 복사</button></div><div class="rows">'+S.members.map((m,i)=>{const v=Math.round(c.net[m.id]||0);return '<div class="row">'+av(m,i)+'<div class="eb"><div class="et">'+esc(m.name)+(m.id===c.tre?'<span class="tag">공금 보관</span>':'')+'</div><div class="sub">낸 돈 '+num(c.paid[m.id]+c.contrib[m.id])+' · 내 몫 '+num(c.share[m.id])+'</div></div><div class="amt '+(v>0?'pos':v<0?'neg':'')+'">'+(v>0?'+':v<0?'−':'')+num(Math.abs(v))+'<small>'+(v>0?'받을 돈':v<0?'보낼 돈':'')+'</small></div></div>'}).join('')+(c.tr.length?c.tr.map(t=>'<div class="tf"><span>'+esc(mname(t.from))+'</span><span class="ar">→</span><span>'+esc(mname(t.to))+'</span><span class="amt">'+num(t.amt)+'<small>원</small></span></div>').join(''):'<div class="tf sub">정산할 금액이 없어요</div>')+'</div><p class="sub" style="margin-top:8px">남은 공금은 총무가 들고 있다고 보고 계산해요. 여행이 끝난 뒤 위 순서대로 보내면 정산이 끝나요.</p></section>';
   const tot=c.byCat.reduce((s,x)=>s+x.v,0);
   if(tot>0)h+='<section class="sec"><div class="sh"><h2>쓴 곳별</h2></div><div class="cats">'+c.byCat.map((x,i)=>x.v>0?'<i style="--c:var(--l'+(i+1)+');flex:'+x.v+'"></i>':'').join('')+'</div>'+c.byCat.map((x,i)=>x.v>0?'<div class="catrow"><span class="cdot" style="--c:var(--l'+(i+1)+')"></span>'+esc(x.c)+'<span class="amt">'+num(x.v)+'<small>원 · '+Math.round(x.v/tot*100)+'%</small></span></div>':'').join('')+'</section>';
   h+='<section class="sec"><div class="sh"><h2>회비</h2></div>'+(S.contribs.length?'<div class="rows">'+S.contribs.map(cn=>{const i=S.members.findIndex(m=>m.id===cn.member);return '<div class="row">'+(i>=0?av(S.members[i],i):'')+'<div class="eb"><div class="et">'+esc(mname(cn.member))+'</div><div class="sub">'+md(cn.date)+(cn.note?' · '+esc(cn.note):'')+'</div></div><div class="amt">'+num(cn.amount)+'<small>원</small></div>'+penBtn('contrib',cn.id)+'</div>'}).join('')+'</div>':'<div class="empty">아직 걷은 회비가 없어요</div>')+addBtn('contrib','회비 추가')+'</section>';
@@ -891,10 +1021,12 @@ function vMore(){
     h+='<p class="sub" style="margin-top:8px">준비물 체크는 내 휴대폰에만 저장돼요.</p>';
   }else h+='<div class="empty">준비물 목록이 비어 있어요</div>';
   h+=addBtn('pack','준비물 추가')+(ui.edit?'<button type="button" class="add" data-act="preset-pack">'+ic('plus',16)+'해외여행 준비물 한 번에 추가</button>':'')+'</section>';
+  h+=vShop();
   h+='<section class="sec"><div class="sh"><h2>메모 · 링크</h2></div>'+(S.info.length?'<div class="rows">'+S.info.map(n=>'<div class="row"><div class="eb"><div class="et">'+esc(n.label)+'</div><div class="sub">'+esc(n.value)+'</div></div>'+(safe(n.url)?lk(safe(n.url),'열기'):'')+penBtn('info',n.id)+'</div>').join('')+'</div>':'<div class="empty">메모가 없어요</div>')+addBtn('info','메모 추가')+(ui.edit?'<button type="button" class="add" data-act="preset-info">'+ic('plus',16)+'해외 긴급 연락처 한 번에 추가</button>':'')+'</section>';
   h+=vLive();
-  h+='<section class="sec"><div class="sh"><h2>공유</h2></div><div class="stack"><button type="button" class="btn" data-act="copyshare">카톡에 붙여넣을 일정 요약 복사</button><button type="button" class="btn" data-act="copysnap">지금 화면을 링크로 보내기 (읽기 전용)</button></div></section>';
+  h+='<section class="sec"><div class="sh"><h2>공유</h2></div><div class="stack"><button type="button" class="btn" data-act="copyshare">카톡에 붙여넣을 일정 요약 복사</button><button type="button" class="btn" data-act="bigtext">글씨 크게 보기 켜고 끄기</button><button type="button" class="btn" data-act="copysnap">지금 화면을 링크로 보내기 (읽기 전용)</button></div></section>';
   if(ui.edit)h+='<section class="sec"><div class="sh"><h2>여행 설정</h2></div><div class="stack"><button type="button" class="btn" data-act="edit" data-k="trip" data-id="">여행 이름 · 날짜 · 예산 · 공지 · 지도 링크 수정</button>'+(mode==='local'?'<button type="button" class="btn danger" data-act="reset-sample">'+(armed==='reset'?'한 번 더 누르면 이 폰의 내용이 모두 지워져요':'이 폰의 여행 비우고 새로 시작')+'</button>':'')+'</div></section>';
+  if(mode!=='demo')h+='<section class="sec"><div class="stack"><button type="button" class="btn" data-act="demo">연습용 예시 화면 보기 (저장 안 돼요)</button></div></section>';
   return h;
 }
 function vEmpty(){
@@ -914,7 +1046,7 @@ function render(){
   }catch(err){console.error(err);body='<div class="empty">화면을 그리다 문제가 생겼어요. 새로고침해 주세요.</div>'}
   const head='<header class="appbar"><div class="wrap bar"><div class="brand"><span class="logo">'+ic('route',17)+'</span><span class="bt">'+esc(S.trip?S.trip.title:'여행가즈아')+'</span>'+(S.trip&&S.trip.sample?'<span class="pill mute">예시</span>':'')+'</div>'+(ui.canEdit?'<button type="button" class="btn sm'+(ui.edit?' pri':'')+'" data-act="toggle-edit">'+(ui.edit?'편집 끝내기':'편집')+'</button>':'')+'</div></header>';
   const tabs='<nav class="tabbar" aria-label="메뉴"><div class="wrap">'+TABS.map(t=>'<button type="button" class="tb" data-act="tab" data-t="'+t[0]+'"'+(ui.tab===t[0]?' aria-current="page"':'')+'>'+ic(t[2],22)+t[1]+'</button>').join('')+'</div></nav>';
-  $('#app').innerHTML=head+'<main class="wrap">'+body+'</main>'+tabs;
+  $('#app').innerHTML=head+'<main class="wrap">'+body+'</main>'+tabs+fabFor();
   $$('.chips').forEach((c,i)=>{
     c.scrollLeft=keep[i]||0;
     const s=c.querySelector('[aria-pressed="true"]');
@@ -959,7 +1091,7 @@ const FORM={
     {k:'start',l:'출발일',t:'date',req:1},
     {k:'end',l:'도착일',t:'date',req:1},
     {k:'budget',l:'예산 (원, 없으면 0)',t:'num'},
-    {k:'fxCode',l:'현지 통화 (해외여행)',t:'text',ph:'JPY, USD, EUR …'},
+    {k:'fxCode',l:'현지 통화 (해외여행)',t:'sel',o:CURRENCIES},
     {k:'fxRate',l:'환율: 현지 통화 1단위당 몇 원',t:'num',ph:'예: 9.2'},
     {k:'treasurer',l:'총무 (공금을 보관하는 사람)',t:'member'},
     {k:'notice',l:'공지 (홈 맨 위에 보여요)',t:'area',ph:'집합 장소, 시간, 꼭 알아야 할 것'},
@@ -968,7 +1100,7 @@ const FORM={
   day:{t:'이 날의 제목',f:[{k:'note',l:'제목',t:'text',ph:'예: 강릉 도착, 바다부터'}]},
   member:{t:'인원',f:[
     {k:'name',l:'이름',t:'text',req:1},
-    {k:'role',l:'역할',t:'text',ph:'총무, 운전, 사진 …'},
+    {k:'role',l:'역할',t:'text',ph:'총무, 운전, 사진 …',dl:ROLES},
     {k:'phone',l:'연락처',t:'text',ph:'010-0000-0000'},
     {k:'note',l:'메모',t:'area',ph:'알레르기, 출발 장소 …'},
     {t:'info',l:'아래 여권·서류 정보는 링크를 아는 사람 모두에게 보여요. 해외여행에서 꼭 필요한 사람만 넣어 주세요.'},
@@ -995,22 +1127,25 @@ const FORM={
     {k:'day',l:'가는 날',t:'sel',o:()=>[['','미정'],...tripDays().map((d,i)=>[d,(i+1)+'일차 '+md(d)])]},
     {k:'naver',l:'네이버 플레이스 링크 (선택)',t:'url',ph:'https://naver.me/…'},
     {k:'ll',l:'좌표 (선택): 위도,경도 또는 구글지도 링크',t:'text',ph:'37.7714, 128.9480'},
+    {k:'must',l:'꼭 갈 곳으로 표시',t:'check',def:false},
     {k:'note',l:'메모',t:'area'}]},
   booking:{t:'예약',f:[
     {k:'type',l:'종류',t:'sel',o:BTYPES},
-    {k:'title',l:'이름',t:'text',req:1,ph:'예: KTX 서울 → 강릉'},
+    {k:'title',l:'이름 (기차·항공은 비워 두면 자동으로 만들어져요)',t:'text',ph:'예: KTX 서울 → 강릉'},
     {k:'status',l:'상태',t:'sel',o:BSTAT},
     {k:'date',l:'날짜',t:'date',req:1},
     {k:'time',l:'시간',t:'time'},
-    {k:'from',l:'출발지 (교통편)',t:'text'},
-    {k:'to',l:'도착지 (교통편)',t:'text'},
+    {k:'trainKind',l:'열차 종류',t:'sel',o:TRAINS},
+    {k:'from',l:'출발지',t:'pick'},
+    {k:'to',l:'도착지',t:'pick'},
     {k:'place',l:'장소 (관광지 · 식당)',t:'text'},
     {k:'people',l:'인원',t:'num'},
     {k:'seat',l:'좌석 · 정보',t:'text'},
     {k:'code',l:'예약번호',t:'text'},
     {k:'price',l:'금액 (원)',t:'num'},
     {k:'link',l:'예약 페이지 링크',t:'url'},
-    {k:'note',l:'메모',t:'area'}]},
+    {k:'note',l:'메모',t:'area'},
+    {k:'addItem',l:'일정에도 같이 넣기',t:'check',newOnly:1}]},
   lodging:{t:'숙소',f:[
     {k:'name',l:'숙소 이름',t:'text',req:1},
     {k:'address',l:'주소',t:'text'},
@@ -1039,8 +1174,13 @@ const FORM={
     {k:'date',l:'날짜',t:'date'},
     {k:'note',l:'메모',t:'text'}]},
   pack:{t:'준비물',f:[
-    {k:'group',l:'묶음',t:'text',ph:'꼭 챙기기, 옷·세면 …'},
+    {k:'group',l:'묶음',t:'text',ph:'꼭 챙기기, 옷·세면 …',dl:()=>[...new Set(['꼭 챙기기','옷·세면','같이 쓸 것','해외여행',...S.pack.map(p=>p.group||'')])].filter(Boolean)},
     {k:'text',l:'준비물',t:'text',req:1}]},
+  shop:{t:'살 것',f:[
+    {k:'text',l:'살 것',t:'text',req:1,ph:'예: 어묵, 기념품'},
+    {k:'where',l:'어디서 살까요 (선택)',t:'text',dl:()=>S.places.map(p=>p.name)},
+    {k:'who',l:'누가 살까요',t:'sel',o:()=>[['','미정'],...S.members.map(m=>[m.id,m.name])]},
+    {k:'note',l:'메모',t:'area'}]},
   info:{t:'메모',f:[
     {k:'label',l:'제목',t:'text',req:1},
     {k:'value',l:'내용',t:'text'},
@@ -1049,14 +1189,15 @@ const FORM={
 const clampToday=()=>TODAY<S.trip.start?S.trip.start:TODAY>S.trip.end?S.trip.end:TODAY;
 const DEF={
   item:()=>({date:ui.day||S.trip.start,time:'',title:'',type:'관광',place:'',ref:'',note:''}),
-  place:()=>({name:'',kind:'관광',area:'',day:'',naver:'',ll:'',note:''}),
+  place:()=>({name:'',kind:'관광',area:'',day:'',naver:'',ll:'',note:'',must:false}),
   booking:()=>({type:'기차',title:'',status:'확정',date:S.trip.start,time:'',from:'',to:'',place:'',people:S.members.length,seat:'',code:'',price:0,link:'',note:''}),
   lodging:()=>({name:'',address:'',naver:'',inDate:S.trip.start,inTime:'15:00',outDate:S.trip.end,outTime:'11:00',room:'',price:0,code:'',phone:'',note:''}),
-  expense:()=>({date:clampToday(),title:'',cat:'식비',local:0,amount:0,payer:'pool',split:[],note:''}),
+  expense:()=>({date:clampToday(),title:'',cat:'식비',local:0,amount:0,payer:lastPayer(),split:[],note:''}),
   contrib:()=>({member:(S.members[0]||{}).id||'',amount:0,date:TODAY,note:''}),
   member:()=>({name:'',role:'',phone:'',note:''}),
   pack:()=>({group:'꼭 챙기기',text:''}),
-  info:()=>({label:'',value:'',url:''})
+  info:()=>({label:'',value:'',url:''}),
+  shop:()=>({text:'',where:'',who:'',note:'',done:false})
 };
 function optsOf(f){
   let o=typeof f.o==='function'?f.o():(f.o||[]);
@@ -1065,20 +1206,45 @@ function optsOf(f){
 }
 function fieldHTML(f,val){
   if(f.t==='info')return '<div class="hint" style="margin-bottom:14px">'+esc(f.l)+'</div>';
-  const id='f-'+f.k,v=val==null?'':val;
+  const id='f-'+f.k,v=val==null?'':val,kind=ui.sheet?ui.sheet.kind:'';
+  if(f.t==='check')return '<div class="field" id="w-'+f.k+'"><label class="chk"><input type="checkbox" id="'+id+'"'+((val==null?f.def!==false:!!val)?' checked':'')+'><span>'+esc(f.l)+'</span></label></div>';
   let inp;
   if(f.t==='area')inp='<textarea id="'+id+'" rows="3" placeholder="'+esc(f.ph||'')+'">'+esc(v)+'</textarea>';
   else if(f.t==='sel'||f.t==='member')inp='<select id="'+id+'">'+optsOf(f).map(o=>'<option value="'+esc(o[0])+'"'+(o[0]===v?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>';
   else if(f.t==='members'){const sel=(Array.isArray(v)&&v.length)?v:S.members.map(m=>m.id);inp='<div class="mchips" id="'+id+'">'+S.members.map(m=>'<label class="mchip"><input type="checkbox" value="'+esc(m.id)+'"'+(sel.includes(m.id)?' checked':'')+'><span>'+esc(m.name)+'</span></label>').join('')+'</div>'}
   else if(f.t==='num')inp='<input id="'+id+'" type="number" inputmode="numeric" min="0" step="any" value="'+esc(v)+'">';
-  else inp='<input id="'+id+'" type="'+(f.t==='url'?'url':f.t)+'" placeholder="'+esc(f.ph||'')+'" value="'+esc(v)+'">';
+  else if(f.t==='pick')inp='<select id="sel-'+f.k+'" class="pickSel" data-for="'+id+'" aria-label="'+esc(f.l)+' 목록에서 고르기"></select><input id="'+id+'" type="text" placeholder="목록에 없으면 직접 입력" value="'+esc(v)+'">';
+  else{
+    inp='<input id="'+id+'" type="'+(f.t==='url'?'url':f.t)+'" placeholder="'+esc(f.ph||'')+'" value="'+esc(v)+'"'+(f.dl?' list="dl-'+f.k+'"':'')+'>';
+    if(f.dl){const L=typeof f.dl==='function'?f.dl():f.dl;inp+='<datalist id="dl-'+f.k+'">'+L.map(x=>'<option value="'+esc(x)+'"></option>').join('')+'</datalist>'}
+  }
+  if(f.t==='date'&&['item','booking','lodging','expense'].includes(kind)&&S.trip)inp+='<div class="dchips">'+tripDays().map((d,i)=>'<button type="button" class="chip sm" data-act="setdate" data-t="'+id+'" data-v="'+d+'">'+(i+1)+'일차 '+md(d)+'</button>').join('')+'</div>';
   if(f.k==='ll')inp+='<button type="button" class="btn sm" style="align-self:flex-start" data-act="geo-fill">이름으로 좌표 찾기</button>';
-  return '<div class="field"><label for="'+id+'">'+esc(f.l)+(f.req?' *':'')+'</label>'+inp+'</div>';
+  return '<div class="field" id="w-'+f.k+'"><label for="'+id+'">'+esc(f.l)+(f.req?' *':'')+'</label>'+inp+'</div>';
+}
+function syncBooking(){
+  const t=($('#f-type')||{}).value;
+  if(!t)return;
+  const tr=TRANSPORT.includes(t),list=LISTS[t]||null;
+  ['from','to'].forEach(k=>{
+    const w=$('#w-'+k),sel=$('#sel-'+k),inp=$('#f-'+k);
+    if(!w||!sel||!inp)return;
+    w.hidden=!tr;
+    sel.hidden=!list;
+    sel.innerHTML=list?'<option value="">'+(t==='항공'?'공항을 골라요':'역을 골라요')+'</option>'+list.map(g=>'<optgroup label="'+esc(g[0])+'">'+g[1].map(n=>'<option'+(n===inp.value?' selected':'')+'>'+esc(n)+'</option>').join('')+'</optgroup>').join(''):'';
+  });
+  const wp=$('#w-place');if(wp)wp.hidden=tr;
+  const wk=$('#w-trainKind');if(wk)wk.hidden=t!=='기차';
+}
+function fabFor(){
+  if(!ui.edit||ui.loading||!S.trip)return '';
+  const m={plan:['item','일정'],map:ui.pseg==='map'?null:['place','장소'],book:ui.seg==='stay'?['lodging','숙소']:['booking','예약'],money:['expense','지출']}[ui.tab];
+  return m?'<button type="button" class="fab" data-act="add" data-k="'+m[0]+'">'+ic('plus',20)+m[1]+' 추가</button>':'';
 }
 const xBtn='<button type="button" class="x" data-act="sheet-close" aria-label="닫기">'+ic('x',18)+'</button>';
 function formHTML(){
   const sh=ui.sheet,F=FORM[sh.kind],canDel=sh.id&&sh.kind!=='trip'&&sh.kind!=='day';
-  return '<div class="scrim" data-act="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="'+esc(F.t)+'"><div class="sheet-h"><h2>'+esc(F.t)+((sh.id||sh.kind==='trip')?' 수정':' 추가')+'</h2>'+xBtn+'</div><form id="sheet-form" autocomplete="off">'+F.f.map(f=>fieldHTML(f,sh.obj[f.k])).join('')+'<div class="sheet-f">'+(canDel?'<button type="button" class="btn danger" data-act="sheet-del">'+(armed==='del'?'정말 삭제':'삭제')+'</button>':'')+'<button type="submit" class="btn pri grow">저장</button></div></form></div></div>';
+  return '<div class="scrim" data-act="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="'+esc(F.t)+'"><div class="sheet-h"><h2>'+esc(F.t)+((sh.id||sh.kind==='trip')?' 수정':' 추가')+'</h2>'+xBtn+'</div><form id="sheet-form" autocomplete="off">'+F.f.filter(f=>!(f.newOnly&&sh.id)).map(f=>fieldHTML(f,sh.obj[f.k])).join('')+'<div class="sheet-f">'+(canDel?'<button type="button" class="btn danger" data-act="sheet-del">'+(armed==='del'?'정말 삭제':'삭제')+'</button>':'')+'<button type="submit" class="btn pri grow">저장</button></div></form></div></div>';
 }
 const shiftBtns=all=>[[-30,'−30분'],[30,'+30분'],[60,'+1시간']].map(x=>'<button type="button" class="btn sm" data-act="mv-shift" data-m="'+x[0]+'" data-all="'+(all?1:0)+'">'+x[1]+'</button>').join('');
 function moveHTML(){
@@ -1101,9 +1267,10 @@ function bulkHTML(){
 function sheetRender(){
   const root=$('#sheet-root'),sh=ui.sheet;
   let h=null;
-  if(sh){h=sh.kind==='move'?moveHTML():sh.kind==='addplace'?apHTML():sh.kind==='bulk'?bulkHTML():formHTML()}
+  if(sh){h=sh.kind==='move'?moveHTML():sh.kind==='addplace'?apHTML():sh.kind==='bulk'?bulkHTML():sh.kind==='who'?whoHTML():formHTML()}
   if(!h){ui.sheet=null;root.innerHTML='';document.body.classList.remove('lock');return}
   root.innerHTML=h;document.body.classList.add('lock');
+  if(sh&&sh.kind==='booking')syncBooking();
 }
 function openSheet(kind,id){
   let obj;
@@ -1123,6 +1290,7 @@ function readForm(F){
   const out={};
   for(const f of F.f){
     if(f.t==='info')continue;
+    if(f.t==='check'){const c=$('#f-'+f.k);out[f.k]=!!(c&&c.checked);continue}
     const el=$('#f-'+f.k);let v;
     if(f.t==='members'){v=$$('input:checked',el).map(i=>i.value);if(v.length===S.members.length)v=[]}
     else if(f.t==='num')v=Number(el.value)||0;
@@ -1136,11 +1304,20 @@ async function saveSheet(){
   const F=FORM[sh.kind],v=readForm(F);
   for(const f of F.f){if(f.req&&!v[f.k]){toast(f.l.replace(/ \(.*$/,'')+'을(를) 입력해 주세요');const el=$('#f-'+f.k);if(el)el.focus();return}}
   if(sh.kind==='trip'&&dn(v.end)<dn(v.start)){toast('도착일이 출발일보다 빠를 수 없어요');return}
+  if(sh.kind==='booking'){
+    const tr=TRANSPORT.includes(v.type);
+    if(tr)v.place='';else{v.from='';v.to='';v.trainKind=''}
+    if(!v.title){
+      if(tr&&(v.from||v.to))v.title=((v.type==='기차'&&v.trainKind)?v.trainKind+' ':'')+(v.from||'?')+' → '+(v.to||'?');
+      else{toast('이름을 넣어 주세요');const el=$('#f-title');if(el)el.focus();return}
+    }
+  }
   if(sh.kind==='expense'){
     const rate=Number(S.trip.fxRate)||0;
     if(v.local>0&&rate>0)v.amount=Math.round(v.local*rate);
     if(!(v.amount>0)){toast(v.local>0?'여행 설정에서 환율을 먼저 넣어 주세요':'금액을 넣어 주세요');return}
     v.cur=v.local>0?(S.trip.fxCode||''):'';
+    LS.set('lastPayer',v.payer);
   }
   busy=true;
   const ok=await guard(async()=>{
@@ -1148,8 +1325,18 @@ async function saveSheet(){
     if(sh.kind==='day'){const r=DB.doc('dayNotes/'+sh.id);if(v.note)await r.set({note:v.note});else await r.delete();return}
     if(sh.kind==='place'){const c=parseLL(v.ll);delete v.ll;v.lat=c?c[0]:null;v.lng=c?c[1]:null}
     if(sh.kind==='item'){const old=sh.id?S.items.find(x=>x.id===sh.id):null;if(!old||old.date!==v.date||old.time!==v.time)v.ord=ordAt(v.date,v.time,sh.id)}
-    if(sh.id)await W.upd(CN(sh.kind),sh.id,v);
-    else{if(sh.kind==='place')v.done=false;await W.put(CN(sh.kind),Object.assign({id:uid()},v))}
+    if(sh.id){delete v.addItem;await W.upd(CN(sh.kind),sh.id,v)}
+    else{
+      if(sh.kind==='place'||sh.kind==='shop')v.done=false;
+      if(sh.kind==='booking'){
+        const add=v.addItem;delete v.addItem;
+        const bid=uid();
+        await W.put('bookings',Object.assign({id:bid},v));
+        if(add&&v.date)await W.put('items',{id:uid(),date:v.date,time:v.time||'',title:v.title,type:TRANSPORT.includes(v.type)?'이동':v.type==='관광지'?'관광':v.type==='식당'?'식사':'기타',place:v.place||'',ref:'b:'+bid,note:'',ord:ordAt(v.date,v.time||'')});
+        return;
+      }
+      await W.put(CN(sh.kind),Object.assign({id:uid()},v));
+    }
   });
   busy=false;
   if(ok){if(sh.kind==='item')ui.day=v.date;closeSheet();toast('저장했어요');if(sh.kind==='place'&&!(isNum(v.lat)&&isNum(v.lng)))setTimeout(geoAll,600)}
@@ -1269,6 +1456,17 @@ document.addEventListener('click',e=>{
     case 'hide':ui.hide=!ui.hide;render();break;
     case 'zoom':ui.zoom=!ui.zoom;render();break;
     case 'locate':locate();break;
+    case 'must':{const p=S.places.find(x=>x.id===d.id);if(p)guard(()=>W.upd('places',p.id,{must:!p.must}));break}
+    case 'mustonly':ui.mustOnly=!ui.mustOnly;render();break;
+    case 'shopdone':{const x=S.shop.find(y=>y.id===d.id);if(x)guard(()=>W.upd('shop',x.id,{done:!x.done}));break}
+    case 'demo':location.hash='demo';location.reload();break;
+    case 'iam':{LS.set('me',d.id);const pend=ui.sheet&&ui.sheet.kind==='who'?ui.sheet.pending:null;if(ui.sheet)closeSheet();render();toast(mname(d.id)+'님으로 기억했어요');if(pend)doVote(pend);break}
+    case 'vote':doVote(d.id);break;
+    case 'sortvote':ui.sortVote=!ui.sortVote;render();break;
+    case 'idone':{const it=S.items.find(x=>x.id===d.id);if(it)guard(()=>W.upd('items',it.id,{done:!it.done}));break}
+    case 'copysettle':copyText(settleText());break;
+    case 'bigtext':{LS.set('big',!LS.get('big',false));applyBig();toast(LS.get('big',false)?'글씨를 크게 봐요':'글씨 크기를 되돌렸어요');break}
+    case 'setdate':{const el=$('#'+d.t);if(el)el.value=d.v;break}
     case 'geo-all':geoAll();break;
     case 'geo-fill':geoFill();break;
     case 'preset-pack':presetPack();break;
@@ -1311,6 +1509,11 @@ document.addEventListener('submit',e=>{
 document.addEventListener('input',e=>{
   if(e.target.id==='srch'){ui.srch=e.target.value;const s=ui.srch.trim()||(S.trip&&S.trip.dest)||'';const n=$('#s-n'),g=$('#s-g');if(n)n.href=nmap(s);if(g)g.href=gmap(s)}
 });
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='f-type'&&ui.sheet&&ui.sheet.kind==='booking')syncBooking();
+  if(t.classList&&t.classList.contains('pickSel')){const inp=$('#'+t.dataset.for);if(inp&&t.value)inp.value=t.value}
+});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&ui.sheet)closeSheet();
   if((e.key==='Enter'||e.key===' ')&&e.target.closest&&e.target.closest('g.pin')){e.preventDefault();ui.pin=e.target.closest('g.pin').dataset.id;render()}
@@ -1319,7 +1522,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- 실시간 연결 ---------- */
 function subscribe(){
   const need=COLS.length+2,got=new Set();
-  const ok=k=>{got.add(k);if(got.size>=need)ui.loading=false;scheduleRender()};
+  const ok=k=>{got.add(k);if(got.size>=need){ui.loading=false;setTimeout(maybeWeather,400)}scheduleRender()};
   const err=e=>{console.error(e);toast('불러오지 못한 내용이 있어요. 새로고침해 주세요')};
   unsubs.push(DB.doc('trip/main').onSnapshot(s=>{S.trip=s.exists?Object.assign({},s.data()):null;ok('trip')},err));
   unsubs.push(DB.collection('dayNotes').onSnapshot(s=>{const m={};s.docs.forEach(x=>{m[x.id]=(x.data()||{}).note||''});S.dayNotes=m;ok('dayNotes')},err));
@@ -1465,6 +1668,7 @@ function importSnap(){
   LS.set('data',SNAP);SNAP=null;history.replaceState(null,'',location.pathname);startLocal();toast('내 폰에 복사했어요. 이제 고칠 수 있어요');
 }
 function banner(){
+  if(mode==='demo')return '<div class="hint" style="margin-bottom:14px">연습용 예시 화면이에요. 마음껏 눌러 보세요. 바꾼 내용은 저장되지 않아요.<div class="acts"><a class="lk pri" href="'+esc(location.pathname)+'">내 여행으로 돌아가기</a></div></div>';
   if(mode==='snap')return '<div class="hint" style="margin-bottom:14px">링크로 받은 화면이에요. 읽기만 할 수 있어요.<div class="acts"><button type="button" class="lk" data-act="import-snap">내 폰에 복사해서 쓰기</button></div></div>';
   if(mode==='local'&&ui.tab==='home')return '<div class="hint" style="margin-bottom:14px">입력한 내용은 <b>이 폰에만</b> 저장되고 다른 사람에게 보이지 않아요. 처음 열면 부산 예시가 들어 있어요. 내 여행으로 쓰려면 편집을 켜고 더보기 아래쪽 <b>이 폰의 여행 비우고 새로 시작</b>을 눌러 주세요.</div>';
   return '';
@@ -1484,9 +1688,22 @@ function exportCsv(){
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&LIVE)LIVE.pull().catch(()=>{})});
 
+function startDemo(){
+  unsubAll();LIVE=null;LSP='demo:';
+  const day=k=>iso(new Date(Date.now()+k*864e5));
+  const txt=JSON.stringify(DEMO).replace(/\{D0\}/g,day(0)).replace(/\{D1\}/g,day(1)).replace(/\{DM6\}/g,day(-6)).replace(/\{DM8\}/g,day(-8)).replace(/\{DM9\}/g,day(-9));
+  const st=JSON.parse(txt);
+  STORE_KEYS.forEach(k=>{if(!st[k])st[k]={}});
+  DB=makeDB(st,async()=>{});
+  mode='demo';ui.canEdit=true;ui.err='';ui.edit=false;ui.tab='home';ui.day=null;
+  S=emptyState();ui.loading=true;render();subscribe();
+}
+
 /* ---------- 시작 ---------- */
+applyBig();
 (async()=>{
   const h=location.hash.replace(/^#/,'');
+  if(h==='demo'){startDemo();return}
   if(h.startsWith('s=')){
     try{SNAP=await decodeSnap(h.slice(2));S=stateFromStore(SNAP);mode='snap';DB=null;ui.canEdit=false;render();return}
     catch(e){toast('링크를 읽지 못했어요')}
