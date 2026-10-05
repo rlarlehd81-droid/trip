@@ -332,6 +332,10 @@ html.big .sheet{zoom:1.12}
 .wxrow{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;padding:10px 0;border-top:1px solid var(--line)}
 .wxrow:first-child{border-top:0}
 .wxd{width:64px;font:14px var(--f-mono);color:var(--muted)}
+
+/* 카카오 지도 */
+.lpwrapk{position:relative;width:28px;height:28px}
+.kme{width:16px;height:16px;border-radius:50%;background:#2F6FE4;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 </style></head><body>
 <div id="app"></div><div id="sheet-root"></div><div id="toast" role="status" aria-live="polite"></div>
 <script type="application/json" id="trip-data">{"v":1,"trip":{"title":"부산 여행","dest":"부산","start":"2026-11-28","end":"2026-11-29","budget":0,"treasurer":"m1","notice":"","sample":false,"mapNaver":"","mapGoogle":""},"members":[{"id":"m1","name":"멤버1","role":"","phone":"","note":""},{"id":"m2","name":"멤버2","role":"","phone":"","note":""},{"id":"m3","name":"멤버3","role":"","phone":"","note":""},{"id":"m4","name":"멤버4","role":"","phone":"","note":""},{"id":"m5","name":"멤버5","role":"","phone":"","note":""},{"id":"m6","name":"멤버6","role":"","phone":"","note":""}],"dayNotes":{},"items":[{"id":"i1","date":"2026-11-28","time":"","title":"수원역 → 부산역","type":"이동","place":"","ref":"b:b1","note":"","ord":10}],"places":[{"id":"p1","name":"이재모피자","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.0983,"lng":129.0328},{"id":"p2","name":"부평깡통시장","kind":"맛집","area":"부산 중구 부평동","day":"","naver":"","note":"","done":false,"lat":35.1017,"lng":129.0263},{"id":"p3","name":"남포동 족발골목","kind":"맛집","area":"부산 중구","day":"","naver":"","note":"","done":false,"lat":35.1008,"lng":129.0258},{"id":"p4","name":"감천문화마을","kind":"관광","area":"부산 사하구 감천동","day":"","naver":"","note":"","done":false,"lat":35.0975,"lng":129.0106},{"id":"p5","name":"해운대","kind":"관광","area":"부산 해운대구","day":"","naver":"","note":"","done":false,"lat":35.1587,"lng":129.1604},{"id":"p6","name":"태종대","kind":"관광","area":"부산 영도구","day":"","naver":"","note":"","done":false,"lat":35.0514,"lng":129.087}],"bookings":[{"id":"b1","type":"기차","title":"수원역 → 부산역","date":"2026-11-28","time":"","from":"수원역","to":"부산역","place":"","people":6,"seat":"","code":"","price":0,"status":"예약필요","link":"","note":"6명이 같이 앉을 수 있게 예매하기"}],"lodging":[],"expenses":[],"contribs":[],"pack":[],"info":[]}</script>
@@ -686,7 +690,9 @@ function loadLeaflet(){
 }
 function syncMap(){
   const slot=$('#lmap-slot');
+  if(slot&&useKMap()){syncKMap();return}
   if(!slot||leafletState!==2||!window.L)return;
+  if(KEL&&KEL.parentNode===slot)slot.removeChild(KEL);
   if(!LEL){LEL=document.createElement('div');LEL.className='lmap'}
   if(LEL.parentNode!==slot)slot.appendChild(LEL);
   if(!LMAP){
@@ -725,6 +731,77 @@ function drawMarkers(){
   }else if(sel&&lastPin!==ui.pin){LMAP.setView([sel.lat,sel.lng],Math.max(LMAP.getZoom(),14))}
   lastPin=ui.pin;
   LEL.classList.toggle('nolabel',LMAP.getZoom()<13);
+}
+/* ---- 카카오 지도 (카카오가 연결돼 있고 장소가 모두 국내일 때) ---- */
+let KMAP=null,KEL=null,KOVL=[],KLINE=null,KFIT=true,KLASTPIN=null,KLASTZOOM=false,KMAPFAIL=false;
+function kEligible(){
+  if(KK.s!==2||!window.kakao||!kakao.maps||!kakao.maps.Map||KMAPFAIL)return false;
+  const pts=S.places.filter(p=>isNum(p.lat)&&isNum(p.lng));
+  return pts.length>0&&pts.every(inKorea);
+}
+const useKMap=()=>kEligible()&&LS.get('mapeng','kakao')==='kakao';
+function syncKMap(){
+  const slot=$('#lmap-slot');
+  if(!slot)return;
+  try{
+    if(!KEL){KEL=document.createElement('div');KEL.className='lmap kmap'}
+    if(LEL&&LEL.parentNode===slot)slot.removeChild(LEL);
+    if(KEL.parentNode!==slot)slot.appendChild(KEL);
+    if(!KMAP){
+      KMAP=new kakao.maps.Map(KEL,{center:new kakao.maps.LatLng(36.5,127.8),level:12});
+      KMAP.addControl(new kakao.maps.ZoomControl(),kakao.maps.ControlPosition.RIGHT);
+      kakao.maps.event.addListener(KMAP,'zoom_changed',()=>KEL.classList.toggle('nolabel',KMAP.getLevel()>6));
+      KFIT=true;
+    }
+    KMAP.relayout();
+    drawKMarkers();
+  }catch(e){
+    console.error(e);
+    KMAPFAIL=true;KMAP=null;
+    if(KEL&&KEL.parentNode)KEL.parentNode.removeChild(KEL);
+    KEL=null;
+    scheduleRender();
+  }
+}
+function drawKMarkers(){
+  const pts=S.places.filter(p=>isNum(p.lat)&&isNum(p.lng)),days=tripDays(),sel=pts.find(p=>p.id===ui.pin);
+  const ll=(a,b)=>new kakao.maps.LatLng(a,b);
+  KOVL.forEach(o=>o.setMap(null));KOVL=[];
+  if(KLINE){KLINE.setMap(null);KLINE=null}
+  const route=itemsOf(ui.day||'').filter(x=>!x.skip).map(x=>pts.find(p=>p.name===x.place)).filter(Boolean);
+  if(route.length>=2){
+    const di=Math.max(0,days.indexOf(ui.day));
+    const col=(getComputedStyle(document.documentElement).getPropertyValue('--l'+(di%6+1))||'#2F6FE4').trim();
+    KLINE=new kakao.maps.Polyline({path:route.map(p=>ll(p.lat,p.lng)),strokeWeight:3,strokeColor:col,strokeOpacity:.85,strokeStyle:'dash'});
+    KLINE.setMap(KMAP);
+  }
+  pts.forEach(p=>{
+    const i=p.day?days.indexOf(p.day):-1,el=document.createElement('div');
+    el.className='lpwrapk';
+    el.innerHTML='<div class="lpin'+(i<0?' none':'')+(p.done?' done':'')+(p.id===ui.pin?' sel':'')+'" style="--c:var(--l'+((i<0?0:i)%6+1)+')">'+(i>=0?i+1:'?')+'</div><span class="lpl">'+esc(p.name)+'</span>';
+    el.addEventListener('click',e=>{e.stopPropagation();ui.pin=p.id;render()});
+    const o=new kakao.maps.CustomOverlay({position:ll(p.lat,p.lng),content:el,xAnchor:.5,yAnchor:.5,clickable:true,zIndex:p.id===ui.pin?3:1});
+    o.setMap(KMAP);KOVL.push(o);
+  });
+  if(ui.me){
+    const el=document.createElement('div');el.className='kme';
+    const o=new kakao.maps.CustomOverlay({position:ll(ui.me.lat,ui.me.lng),content:el,xAnchor:.5,yAnchor:.5});
+    o.setMap(KMAP);KOVL.push(o);
+  }
+  const zoomed=!!(ui.zoom&&sel);
+  if(KFIT||KLASTZOOM!==zoomed){
+    const fb=zoomed?pts.filter(p=>hav(sel,p)<=3):pts,bb=new kakao.maps.LatLngBounds();
+    fb.forEach(p=>bb.extend(ll(p.lat,p.lng)));
+    if(ui.me&&!zoomed)bb.extend(ll(ui.me.lat,ui.me.lng));
+    if(fb.length===1){KMAP.setCenter(ll(fb[0].lat,fb[0].lng));KMAP.setLevel(3)}
+    else if(fb.length>1)KMAP.setBounds(bb,40,40,40,40);
+    KFIT=false;KLASTZOOM=zoomed;
+  }else if(sel&&KLASTPIN!==ui.pin){
+    KMAP.panTo(ll(sel.lat,sel.lng));
+    if(KMAP.getLevel()>4)KMAP.setLevel(4);
+  }
+  KLASTPIN=ui.pin;
+  KEL.classList.toggle('nolabel',KMAP.getLevel()>6);
 }
 function locate(){
   if(!navigator.geolocation){toast('이 기기에서는 위치를 못 가져와요');return}
@@ -1164,8 +1241,8 @@ async function addLodgingFromKakao(r){
 }
 function vKakao(){
   const key=kakaoKey(),st=KK.s===2?'연결됨':KK.s===1?'연결하는 중':KK.s===-1?'연결 실패':key?'키 저장됨':'연결 안 됨';
-  return '<section class="sec"><div class="sh"><h2>카카오 지도 연결</h2><span class="pill '+(KK.s===2?'ok':KK.s===-1?'need':'mute')+'">'+st+'</span></div><div class="hint">연결하면 홈에 목적지의 가볼 만한 곳, 맛집, 카페, 숙소가 나오고 장소 이름 검색이 정확해져요.'+(KK.s===-1&&KK.msg?'<br><b>'+esc(KK.msg)+'</b>':'')+'</div><div class="field" style="margin-top:12px"><label for="kk-key">카카오 JavaScript 키</label><input id="kk-key" type="password" autocomplete="off" placeholder="'+(key?'저장된 키가 있어요. 바꾸려면 새로 붙여 넣기':'여기에 붙여 넣기')+'"></div><div class="stack"><button type="button" class="btn pri" data-act="save-kakao">저장하고 연결하기</button>'+(key?'<button type="button" class="btn danger" data-act="clear-kakao">연결 끊기</button>':'')+'</div>'
-    +'<details class="how"><summary>키 만드는 법</summary><ol><li>developers.kakao.com 에 카카오 계정으로 로그인해요.</li><li>내 애플리케이션 → 애플리케이션 추가하기로 앱을 하나 만들어요. 이름은 아무거나 괜찮아요.</li><li>앱 관리에서 <b>카카오맵</b>을 찾아 <b>사용 설정</b>을 <b>ON</b>으로 켜요.</li><li><b>JavaScript 키</b> 설정에서 <b>JavaScript SDK 도메인</b>에 <b>'+esc(location.origin)+'</b>를 등록해요.</li><li>같은 화면의 <b>JavaScript 키</b>를 복사해서 위 칸에 붙여 넣어요.</li></ol><p class="sub">키는 채팅이나 단톡방에 올리지 말고 이 칸에만 넣어 주세요. 공동 편집 중이면 같이 가는 사람 폰에도 자동으로 적용돼요.</p></details></section>';
+  return '<section class="sec"><div class="sh"><h2>카카오 지도 연결</h2><span class="pill '+(KK.s===2?'ok':KK.s===-1?'need':'mute')+'">'+st+'</span></div><div class="hint">연결하면 홈에 목적지의 가볼 만한 곳, 맛집, 카페, 숙소가 나오고 장소 이름 검색이 정확해져요.'+(KK.s===-1&&KK.msg?'<br><b>'+esc(KK.msg)+'</b>':'')+'</div><div class="field" style="margin-top:12px"><label for="kk-key">카카오 JavaScript 키</label><input id="kk-key" type="password" autocomplete="off" placeholder="'+(key?'저장된 키가 있어요. 바꾸려면 새로 붙여 넣기':'여기에 붙여 넣기')+'"></div><div class="stack"><button type="button" class="btn pri" data-act="save-kakao">저장하고 연결하기</button>'+(key?'<button type="button" class="btn" data-act="kk-link">다른 폰에 연결하는 링크 복사</button><button type="button" class="btn danger" data-act="clear-kakao">연결 끊기</button>':'')+'</div>'
+    +(key?'<p class="sub" style="margin-top:8px">연결 링크에는 키가 들어 있어요. 나에게만 보내서(카톡 나와의 채팅 등) 폰에서 열면 바로 연결돼요. 평소 쓰는 브라우저(크롬·사파리)에서 열어 주세요.</p>':'')+'<details class="how"><summary>키 만드는 법</summary><ol><li>developers.kakao.com 에 카카오 계정으로 로그인해요.</li><li>내 애플리케이션 → 애플리케이션 추가하기로 앱을 하나 만들어요. 이름은 아무거나 괜찮아요.</li><li>앱 관리에서 <b>카카오맵</b>을 찾아 <b>사용 설정</b>을 <b>ON</b>으로 켜요.</li><li><b>JavaScript 키</b> 설정에서 <b>JavaScript SDK 도메인</b>에 <b>'+esc(location.origin)+'</b>를 등록해요.</li><li>같은 화면의 <b>JavaScript 키</b>를 복사해서 위 칸에 붙여 넣어요.</li></ol><p class="sub">키는 채팅이나 단톡방에 올리지 말고 이 칸에만 넣어 주세요. 공동 편집 중이면 같이 가는 사람 폰에도 자동으로 적용돼요.</p></details></section>';
 }
 async function saveKakao(){
   const v=(($('#kk-key')||{}).value||'').trim();
@@ -1198,11 +1275,11 @@ function vMap(){
   let h='';
   if(!pts.length)h+='<div class="empty">지도에 찍을 좌표가 아직 없어요.'+(no.length?'<br><button type="button" class="btn sm" style="margin-top:10px" data-act="geo-all">이름으로 좌표 찾기</button>':'')+'</div>';
   else{
-    if(leafletState===0)loadLeaflet();
+    if(!useKMap()&&leafletState===0)loadLeaflet();
     const sel=pts.find(p=>p.id===ui.pin),zoomed=ui.zoom&&sel;
-    if(leafletState===2)h+='<div class="map"><div id="lmap-slot"></div><div class="map-cap"><span>숫자 = 일정에 넣은 날 · ? = 아직 미정</span><span>지도 © OpenStreetMap</span></div></div>';
+    if(useKMap()||leafletState===2)h+='<div class="map"><div id="lmap-slot"></div><div class="map-cap"><span>숫자 = 일정에 넣은 날 · ? = 아직 미정</span><span>지도 © '+(useKMap()?'Kakao':'OpenStreetMap')+'</span></div></div>';
     else h+=mapSvg(zoomed?pts.filter(p=>hav(sel,p)<=3):pts,zoomed?3:0);
-    h+='<div class="acts" style="margin-top:10px"><button type="button" class="chip" data-act="locate" aria-pressed="'+!!ui.me+'">내 위치에서 가까운 곳</button>'+(sel?'<button type="button" class="chip" data-act="zoom" aria-pressed="'+!!ui.zoom+'">선택한 곳 주변만 크게 보기 (3km)</button>':'')+'</div>';
+    h+='<div class="acts" style="margin-top:10px"><button type="button" class="chip" data-act="locate" aria-pressed="'+!!ui.me+'">내 위치에서 가까운 곳</button>'+(sel?'<button type="button" class="chip" data-act="zoom" aria-pressed="'+!!ui.zoom+'">선택한 곳 주변만 크게 보기 (3km)</button>':'')+(kEligible()?'<button type="button" class="chip" data-act="mapeng" aria-pressed="'+useKMap()+'">카카오 지도로 보기</button>':'')+'</div>';
     const ref=sel||ui.me;
     if(ref){
       const near=nearList(ref,pts);
@@ -1785,6 +1862,8 @@ document.addEventListener('click',e=>{
     case 'hide':ui.hide=!ui.hide;render();break;
     case 'zoom':ui.zoom=!ui.zoom;render();break;
     case 'locate':locate();break;
+    case 'mapeng':LS.set('mapeng',LS.get('mapeng','kakao')==='kakao'?'osm':'kakao');KFIT=true;LFIT=true;render();break;
+    case 'kk-link':{const k=kakaoKey();if(k)copyText(location.origin+location.pathname+'#kk='+k);break}
     case 'wx-open':ui.sheet={kind:'wx',obj:{}};sheetRender();maybeClimate();break;
     case 'wx-search':wxSearch();break;
     case 'wx-pick':{const x=WXSR[Number(d.i)];if(x)setWxLoc({name:x.name,lat:x.lat,lng:x.lng});break}
@@ -2049,7 +2128,9 @@ function startDemo(){
 /* ---------- 시작 ---------- */
 applyBig();
 (async()=>{
-  const h=location.hash.replace(/^#/,'');
+  let h=location.hash.replace(/^#/,'');
+  const km=h.match(/^kk=([A-Za-z0-9_-]{16,80})$/);
+  if(km){LS.set('kakaoKey',km[1]);history.replaceState(null,'',location.pathname);h='';setTimeout(()=>toast('카카오 지도 키를 넣었어요. 연결하는 중이에요…'),700)}
   if(h==='demo'){startDemo();return}
   if(h.startsWith('s=')){
     try{SNAP=await decodeSnap(h.slice(2));S=stateFromStore(SNAP);mode='snap';DB=null;ui.canEdit=false;render();return}
